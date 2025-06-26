@@ -23,6 +23,12 @@ A modern workflow editor app for designing and executing custom automation workf
   + for get workflow endpoint:
     + spec: GET /workflow/{id}
     + code: GET /workflows/{id}
++ since new endpoints for listing, creating, or updating workflows were out of scope, for dev purposes, I took that as an okay to seed test data (using the original stub) so the first GET request wouldn't result in a 404
++ the backend should validate invalid workflows when *executing*, but not when retrieving or saving them
+  + a user may wish to save a draft state of a workflow that is not intended to be executable/valid yet - they should be able to save a WIP in the cloud regardless of correctness or not
++ what constitutes a valid workflow
+  + only one start node
+  + ALL end nodes have to be reachable for the full workflow to be valid
 
 
 ## 🛠️ Tech Stack
