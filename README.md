@@ -2,6 +2,21 @@
 
 A modern workflow editor app for designing and executing custom automation workflows (e.g., weather notifications). Users can visually build workflows, configure parameters, and view real-time execution results.
 
+## Design/Tooling decisions
++ golang-migrate - went with this tool for db migrations based on having the most stars of similar tooling in go-land and still being maintained with occasional updates (last being Apr 24, 2 months ago as of writing)
+  + I was burning some time figuring out the golang db migration tool landscape, and decided to stop trying to find a more type-strict go-native tool where you could write migrations using a query-builder of sorts, that could use go-defined types and structs
++ table design
+  + nodes/edges tables with the right indexes, and recursive CTEs, can effectively operates like a graph DB
+  + however, I opted to just store the workflow_id of each node against each node/edge to avoid those potentially expensive operations for sufficiently large workflows
+    + this assumes a 1:1 relationship between workflows, and nodes/edges
+    + and as such precludes re-use of nodes/edges across workflows in future - making this call for now for simplicity, and to not prematurely optimise for a use case that hasn't been defined in the project (take-home task) spec
+  + dumping all of `data` into just a jsonb column, as based on the task right now and even assuming new nodes types, etc. will be introduced in future, we shouldn't need to search on data within the data block at least for the purpose of the workflow editor
+    + there may be a use case for searching over them more for analytics/usage purposes, but that should be deferred to another DB better served for that use case, e.g. elastic search or similar
+
+## Assumptions
++ the POST /execute endpoint is supposed to provide the full workflow definition + form inputs - from the initial clone, it seems that it only provides form inputs and not the full workflow (nodes+edges data), assuming this is part of the task
+  + also because otherwise it won't be possible to update the workflow as it exists in the frontend, as part of the POST /execute call
+
 ## 🛠️ Tech Stack
 
 - **Frontend:** React + TypeScript, @xyflow/react (drag-and-drop), Radix UI, Tailwind CSS, Vite
