@@ -14,6 +14,7 @@ func main() {
 		migrationsPath = flag.String("migrations-path", "./migrations", "Path to migrations directory")
 		databaseURL    = flag.String("database-url", "", "Database URL (can also use DATABASE_URL env var)")
 		command        = flag.String("command", "up", "Migration command: up, down, version")
+		seedData       = flag.Bool("seed", false, "Seed test data after running migrations")
 	)
 	flag.Parse()
 
@@ -41,6 +42,15 @@ func main() {
 			log.Fatalf("Failed to run migrations: %v", err)
 		}
 		fmt.Println("Migrations completed successfully")
+
+		// Seed test data if requested
+		if *seedData {
+			fmt.Println("Seeding test data...")
+			if err := SeedTestData(); err != nil {
+				log.Fatalf("Failed to seed test data: %v", err)
+			}
+			fmt.Println("Test data seeded successfully")
+		}
 
 	case "version":
 		version, dirty, err := db.GetMigrationVersion(*databaseURL, *migrationsPath)

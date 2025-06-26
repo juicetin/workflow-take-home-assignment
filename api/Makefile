@@ -9,12 +9,16 @@ build:
 
 .PHONY: build-migrate
 build-migrate:
-	go build -o bin/migrate ./scripts/migrate.go
+	go build -o bin/migrate ./scripts/migrate.go ./scripts/seed_test_data.go
 
 # Migration commands
 .PHONY: migrate-up
 migrate-up:
 	./scripts/migrate.sh up "$(DATABASE_URL)"
+
+.PHONY: migrate-up-seed
+migrate-up-seed:
+	./scripts/migrate.sh up "$(DATABASE_URL)" --seed
 
 .PHONY: migrate-version
 migrate-version:
@@ -49,6 +53,7 @@ help:
 	@echo "  build            - Build the API binary"
 	@echo "  build-migrate    - Build the migrate CLI tool"
 	@echo "  migrate-up       - Run database migrations"
+	@echo "  migrate-up-seed  - Run database migrations and seed test data"
 	@echo "  migrate-version  - Show current migration version"
 	@echo "  run              - Run the API server"
 	@echo "  test             - Run tests"
