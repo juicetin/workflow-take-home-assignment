@@ -2,10 +2,31 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// Valid node types
+const (
+	NodeTypeStart       = "start"
+	NodeTypeForm        = "form"
+	NodeTypeIntegration = "integration"
+	NodeTypeCondition   = "condition"
+	NodeTypeEmail       = "email"
+	NodeTypeEnd         = "end"
+)
+
+// ValidNodeTypes contains all allowed node types as a set for O(1) lookups
+var ValidNodeTypes = map[string]bool{
+	NodeTypeStart:       true,
+	NodeTypeForm:        true,
+	NodeTypeIntegration: true,
+	NodeTypeCondition:   true,
+	NodeTypeEmail:       true,
+	NodeTypeEnd:         true,
+}
 
 // Node represents a workflow node with its position and data
 type Node struct {
@@ -63,4 +84,39 @@ func (nr *NodeRequest) ToNode() *Node {
 		PositionY: nr.Position.Y,
 		Data:      nr.Data,
 	}
+}
+
+// Validate checks if the node has a valid type
+func (n *Node) Validate() error {
+	return ValidateNodeType(n.Type)
+}
+
+// Validate checks if the node request has a valid type
+func (nr *NodeRequest) Validate() error {
+	return ValidateNodeType(nr.Type)
+}
+
+// ValidateNodeType checks if the given type is a valid node type
+func ValidateNodeType(nodeType string) error {
+	if ValidNodeTypes[nodeType] {
+		return nil
+	}
+
+	// Get valid types for error message
+	validTypes := make([]string, 0, len(ValidNodeTypes))
+	for nodeType := range ValidNodeTypes {
+		validTypes = append(validTypes, nodeType)
+	}
+
+	return fmt.Errorf("invalid node type '%s', must be one of: %v", nodeType, validTypes)
+}
+
+// IsStartNode returns true if this is a start node
+func (n *Node) IsStartNode() bool {
+	return n.Type == NodeTypeStart
+}
+
+// IsEndNode returns true if this is an end node
+func (n *Node) IsEndNode() bool {
+	return n.Type == NodeTypeEnd
 }

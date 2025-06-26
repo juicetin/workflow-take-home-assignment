@@ -1,10 +1,21 @@
 package models
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// Valid edge types
+const (
+	EdgeTypeSmoothstep = "smoothstep"
+)
+
+// ValidEdgeTypes contains all allowed edge types as a set for O(1) lookups
+var ValidEdgeTypes = map[string]bool{
+	EdgeTypeSmoothstep: true,
+}
 
 // Edge represents a workflow edge connecting two nodes
 type Edge struct {
@@ -123,4 +134,35 @@ func (er *EdgeRequest) ToEdge() *Edge {
 	}
 
 	return edge
+}
+
+// Validate checks if the edge has a valid type
+func (e *Edge) Validate() error {
+	if e.Type != nil {
+		return ValidateEdgeType(*e.Type)
+	}
+	return nil
+}
+
+// Validate checks if the edge request has a valid type
+func (er *EdgeRequest) Validate() error {
+	if er.Type != nil {
+		return ValidateEdgeType(*er.Type)
+	}
+	return nil
+}
+
+// ValidateEdgeType checks if the given type is a valid edge type
+func ValidateEdgeType(edgeType string) error {
+	if ValidEdgeTypes[edgeType] {
+		return nil
+	}
+
+	// Get valid types for error message
+	validTypes := make([]string, 0, len(ValidEdgeTypes))
+	for edgeType := range ValidEdgeTypes {
+		validTypes = append(validTypes, edgeType)
+	}
+
+	return fmt.Errorf("invalid edge type '%s', must be one of: %v", edgeType, validTypes)
 }
