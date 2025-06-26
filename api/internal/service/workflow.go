@@ -6,17 +6,28 @@ import (
 
 	"github.com/google/uuid"
 
+	"workflow-code-test/api/internal/execution"
 	"workflow-code-test/api/internal/models"
 	"workflow-code-test/api/internal/repository"
 )
 
 type WorkflowService struct {
-	repo *repository.WorkflowRepository
+	repo           *repository.WorkflowRepository
+	executionEngine *execution.Engine
 }
 
 func NewWorkflowService(repo *repository.WorkflowRepository) *WorkflowService {
+	// Initialize execution services
+	weatherService := execution.NewDefaultWeatherService(false) // Use real API
+	emailService := execution.NewInMemoryEmailService()
+	validator := execution.NewDefaultInputValidator()
+	
+	// Create execution engine
+	executionEngine := execution.NewEngine(weatherService, emailService, validator)
+	
 	return &WorkflowService{
-		repo: repo,
+		repo:           repo,
+		executionEngine: executionEngine,
 	}
 }
 
@@ -138,5 +149,10 @@ func (s *WorkflowService) validateWorkflowRequest(req *models.WorkflowRequest) e
 	}
 	
 	return nil
+}
+
+// ExecuteWorkflow executes a workflow using the execution engine
+func (s *WorkflowService) ExecuteWorkflow(ctx context.Context, workflow *models.WorkflowResponse, req *models.ExecutionRequest) (*models.ExecutionResponse, error) {
+	return s.executionEngine.ExecuteWorkflow(ctx, workflow, req)
 }
 
