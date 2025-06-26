@@ -16,6 +16,14 @@ A modern workflow editor app for designing and executing custom automation workf
 ## Assumptions
 + the POST /execute endpoint is supposed to provide the full workflow definition + form inputs - from the initial clone, it seems that it only provides form inputs and not the full workflow (nodes+edges data), assuming this is part of the task
   + also because otherwise it won't be possible to update the workflow as it exists in the frontend, as part of the POST /execute call
++ I took existing code to be the source of truth, where there were minor conflicts with the spec:
+  + for execute endpoint:
+    + spec: Execute Endpoint (POST /execute)
+    + code: /workflows/{id}/execute
+  + for get workflow endpoint:
+    + spec: GET /workflow/{id}
+    + code: GET /workflows/{id}
+
 
 ## 🛠️ Tech Stack
 

@@ -8,11 +8,10 @@ import (
 
 // Workflow represents a complete workflow definition
 type Workflow struct {
-	ID             uuid.UUID `json:"id" db:"id"`
-	Name           string    `json:"name" db:"name"`
-	StartingNodeID string    `json:"-" db:"starting_node_id"`
-	CreatedAt      time.Time `json:"-" db:"created_at"`
-	UpdatedAt      time.Time `json:"-" db:"updated_at"`
+	ID        uuid.UUID `json:"id" db:"id"`
+	Name      string    `json:"name" db:"name"`
+	CreatedAt time.Time `json:"-" db:"created_at"`
+	UpdatedAt time.Time `json:"-" db:"updated_at"`
 }
 
 // WorkflowResponse represents a complete workflow as returned to the frontend

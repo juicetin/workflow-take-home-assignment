@@ -5,14 +5,27 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5"
+
+	"workflow-code-test/api/internal/repository"
+	"workflow-code-test/api/internal/service"
 )
 
 type Service struct {
-	db *pgx.Conn
+	db              *pgx.Conn
+	workflowService *service.WorkflowService
 }
 
 func NewService(db *pgx.Conn) (*Service, error) {
-	return &Service{db: db}, nil
+	// Create repository
+	workflowRepo := repository.NewWorkflowRepository(db)
+	
+	// Create service
+	workflowService := service.NewWorkflowService(workflowRepo)
+	
+	return &Service{
+		db:              db,
+		workflowService: workflowService,
+	}, nil
 }
 
 // jsonMiddleware sets the Content-Type header to application/json

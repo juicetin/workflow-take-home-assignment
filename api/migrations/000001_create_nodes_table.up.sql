@@ -2,8 +2,8 @@
 CREATE TABLE IF NOT EXISTS nodes (
     id VARCHAR(255) PRIMARY KEY,
     type VARCHAR(100) NOT NULL,
-    position_x INTEGER NOT NULL,
-    position_y INTEGER NOT NULL,
+    position_x DECIMAL(10,2) NOT NULL,
+    position_y DECIMAL(10,2) NOT NULL,
     data JSONB NOT NULL,
     workflow_id UUID NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

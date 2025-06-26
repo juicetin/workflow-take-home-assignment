@@ -7,7 +7,6 @@ DROP TRIGGER IF EXISTS update_workflows_updated_at ON workflows;
 
 -- Drop indexes
 DROP INDEX IF EXISTS idx_workflows_created_at;
-DROP INDEX IF EXISTS idx_workflows_starting_node;
 DROP INDEX IF EXISTS idx_workflows_name;
 
 -- Drop the workflows table

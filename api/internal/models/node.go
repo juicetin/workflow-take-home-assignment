@@ -32,8 +32,8 @@ var ValidNodeTypes = map[string]bool{
 type Node struct {
 	ID         string          `json:"id" db:"id"`
 	Type       string          `json:"type" db:"type"`
-	PositionX  int             `json:"-" db:"position_x"`
-	PositionY  int             `json:"-" db:"position_y"`
+	PositionX  float64         `json:"-" db:"position_x"`
+	PositionY  float64         `json:"-" db:"position_y"`
 	Data       json.RawMessage `json:"data" db:"data"`
 	WorkflowID uuid.UUID       `json:"-" db:"workflow_id"`
 	CreatedAt  time.Time       `json:"-" db:"created_at"`
@@ -42,8 +42,8 @@ type Node struct {
 
 // Position represents the x,y coordinates of a node
 type Position struct {
-	X int `json:"x"`
-	Y int `json:"y"`
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
 
 // NodeResponse represents a node as returned to the frontend
