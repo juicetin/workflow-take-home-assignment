@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import type { ExecutionResults, WorkflowFormData } from '../types';
+import type { ExecutionResults, WorkflowFormData, WorkflowNode, WorkflowEdge } from '../types';
 
 interface ExecuteError {
   message: string;
@@ -11,7 +11,7 @@ export function useExecuteWorkflow(id: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function execute(formData: WorkflowFormData) {
+  async function execute(formData: WorkflowFormData, nodes: WorkflowNode[], edges: WorkflowEdge[]) {
     setLoading(true);
     setError(null);
     setResults(null);
@@ -23,6 +23,8 @@ export function useExecuteWorkflow(id: string) {
         body: JSON.stringify({
           formData,
           condition: { operator: formData.operator, threshold: formData.threshold },
+          nodes,
+          edges,
         }),
       });
       if (!res.ok) {

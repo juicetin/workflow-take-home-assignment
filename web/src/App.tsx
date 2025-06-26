@@ -43,7 +43,7 @@ function App() {
 
   const handleExecute = async (data: WorkflowFormData) => {
     setFormData(data);
-    await execute(data);
+    await execute(data, nodes, edges);
   };
 
   const onReset = () => {
