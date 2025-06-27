@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/google/uuid"
@@ -13,16 +14,19 @@ import (
 )
 
 // SeedTestData creates test workflow data in the database
-func SeedTestData() error {
-	// Get a connection from the pool
-	conn, err := db.GetPool().Acquire(context.Background())
+func SeedTestData(databaseURL string) error {
+	// Create database config and sql.DB connection for Jet
+	dbConfig := db.DefaultConfig()
+	dbConfig.URI = databaseURL
+
+	sqlDB, err := db.GetJetDB(dbConfig)
 	if err != nil {
 		return err
 	}
-	defer conn.Release()
+	defer sqlDB.Close()
 
-	// Create repository
-	repo := repository.NewWorkflowRepository(conn.Conn())
+	// Create repository using sql.DB
+	repo := repository.NewWorkflowRepository(sqlDB)
 
 	// Create test workflow
 	workflowID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
@@ -160,6 +164,13 @@ func SeedTestData() error {
 			LabelStyleFontWeight: stringPtr("bold"),
 			WorkflowID:           workflowID,
 		},
+	}
+
+	// Populate strongly typed data from raw data for all nodes
+	for i := range nodes {
+		if err := nodes[i].LoadDataFromRaw(); err != nil {
+			return fmt.Errorf("failed to load data for node %s: %w", nodes[i].ID, err)
+		}
 	}
 
 	// Save the workflow

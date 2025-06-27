@@ -70,10 +70,43 @@ func (n *Node) ToResponse() NodeResponse {
 
 // NodeRequest represents a node as sent from the frontend
 type NodeRequest struct {
-	ID       string   `json:"id"`
-	Type     string   `json:"type"`
-	Position Position `json:"position"`
-	Data     NodeData `json:"data"`
+	ID       string          `json:"id"`
+	Type     string          `json:"type"`
+	Position Position        `json:"position"`
+	Data     NodeData        `json:"data"`
+	RawData  json.RawMessage `json:"-"` // For storing raw JSON during unmarshaling
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for NodeRequest
+func (nr *NodeRequest) UnmarshalJSON(data []byte) error {
+	// First unmarshal into a temporary struct to get the basic fields
+	var temp struct {
+		ID       string          `json:"id"`
+		Type     string          `json:"type"`
+		Position Position        `json:"position"`
+		Data     json.RawMessage `json:"data"`
+	}
+
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return fmt.Errorf("failed to unmarshal node request: %w", err)
+	}
+
+	// Set the basic fields
+	nr.ID = temp.ID
+	nr.Type = temp.Type
+	nr.Position = temp.Position
+	nr.RawData = temp.Data
+
+	// Parse the strongly typed data using the node type
+	if len(temp.Data) > 0 {
+		parsedData, err := ParseNodeData(temp.Type, temp.Data)
+		if err != nil {
+			return fmt.Errorf("failed to parse node data for type %s: %w", temp.Type, err)
+		}
+		nr.Data = parsedData
+	}
+
+	return nil
 }
 
 // ToNode converts a NodeRequest to a Node for database storage

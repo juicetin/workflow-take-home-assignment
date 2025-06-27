@@ -46,7 +46,7 @@ func main() {
 		// Seed test data if requested
 		if *seedData {
 			fmt.Println("Seeding test data...")
-			if err := SeedTestData(); err != nil {
+			if err := SeedTestData(*databaseURL); err != nil {
 				log.Fatalf("Failed to seed test data: %v", err)
 			}
 			fmt.Println("Test data seeded successfully")

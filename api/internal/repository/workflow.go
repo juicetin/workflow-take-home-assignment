@@ -2,87 +2,115 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
+	"github.com/go-jet/jet/v2/postgres"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
+	"workflow-code-test/api/internal/db/gen/workflow_engine/public/model"
+	. "workflow-code-test/api/internal/db/gen/workflow_engine/public/table"
 	"workflow-code-test/api/internal/models"
-	"workflow-code-test/api/pkg/db"
 )
 
 type WorkflowRepository struct {
-	conn *pgx.Conn
+	db *sql.DB
 }
 
-func NewWorkflowRepository(conn *pgx.Conn) *WorkflowRepository {
+func NewWorkflowRepository(db *sql.DB) *WorkflowRepository {
 	return &WorkflowRepository{
-		conn: conn,
+		db: db,
 	}
 }
 
 // GetWorkflow retrieves a workflow by ID
 func (r *WorkflowRepository) GetWorkflow(ctx context.Context, workflowID uuid.UUID) (*models.Workflow, error) {
-	query := `
-		SELECT id, name, created_at, updated_at
-		FROM workflows
-		WHERE id = $1
-	`
-
-	var workflow models.Workflow
-	err := r.conn.QueryRow(ctx, query, workflowID).Scan(
-		&workflow.ID,
-		&workflow.Name,
-		&workflow.CreatedAt,
-		&workflow.UpdatedAt,
+	stmt := postgres.SELECT(
+		Workflows.ID,
+		Workflows.Name,
+		Workflows.CreatedAt,
+		Workflows.UpdatedAt,
+	).FROM(
+		Workflows,
+	).WHERE(
+		Workflows.ID.EQ(postgres.UUID(workflowID)),
 	)
 
+	var dest model.Workflows
+	err := stmt.QueryContext(ctx, r.db, &dest)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("workflow not found: %s", workflowID)
 		}
 		return nil, fmt.Errorf("failed to get workflow: %w", err)
 	}
 
-	return &workflow, nil
+	// Convert db model to domain model
+	workflow := &models.Workflow{
+		ID:   dest.ID,
+		Name: dest.Name,
+	}
+	if dest.CreatedAt != nil {
+		workflow.CreatedAt = *dest.CreatedAt
+	}
+	if dest.UpdatedAt != nil {
+		workflow.UpdatedAt = *dest.UpdatedAt
+	}
+
+	return workflow, nil
 }
 
 // GetNodesByWorkflow retrieves all nodes for a given workflow
 func (r *WorkflowRepository) GetNodesByWorkflow(ctx context.Context, workflowID uuid.UUID) ([]models.Node, error) {
-	query := `
-		SELECT id, type, position_x, position_y, data, workflow_id, created_at, updated_at
-		FROM nodes
-		WHERE workflow_id = $1
-		ORDER BY created_at
-	`
+	stmt := postgres.SELECT(
+		Nodes.ID,
+		Nodes.Type,
+		Nodes.PositionX,
+		Nodes.PositionY,
+		Nodes.Data,
+		Nodes.WorkflowID,
+		Nodes.CreatedAt,
+		Nodes.UpdatedAt,
+	).FROM(
+		Nodes,
+	).WHERE(
+		Nodes.WorkflowID.EQ(postgres.UUID(workflowID)),
+	).ORDER_BY(
+		Nodes.CreatedAt.ASC(),
+	)
 
-	rows, err := r.conn.Query(ctx, query, workflowID)
+	var dbNodes []model.Nodes
+	err := stmt.QueryContext(ctx, r.db, &dbNodes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query nodes: %w", err)
 	}
-	defer rows.Close()
 
-	var nodes []models.Node
-	for rows.Next() {
-		var node models.Node
-		err := rows.Scan(
-			&node.ID,
-			&node.Type,
-			&node.PositionX,
-			&node.PositionY,
-			&node.Data,
-			&node.WorkflowID,
-			&node.CreatedAt,
-			&node.UpdatedAt,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan node: %w", err)
+	// Convert db models to domain models
+	nodes := make([]models.Node, len(dbNodes))
+	for i, dbNode := range dbNodes {
+		node := models.Node{
+			ID:         dbNode.ID,
+			Type:       dbNode.Type,
+			PositionX:  dbNode.PositionX,
+			PositionY:  dbNode.PositionY,
+			RawData:    []byte(dbNode.Data), // Jet sees JSONB as string, convert to []byte
+			WorkflowID: dbNode.WorkflowID,
 		}
-		nodes = append(nodes, node)
-	}
+		if dbNode.CreatedAt != nil {
+			node.CreatedAt = *dbNode.CreatedAt
+		}
+		if dbNode.UpdatedAt != nil {
+			node.UpdatedAt = *dbNode.UpdatedAt
+		}
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating nodes: %w", err)
+		// Load strongly typed data from raw data
+		if len(node.RawData) > 0 {
+			if err := node.LoadDataFromRaw(); err != nil {
+				return nil, fmt.Errorf("failed to load typed data for node %s: %w", node.ID, err)
+			}
+		}
+
+		nodes[i] = node
 	}
 
 	return nodes, nil
@@ -90,49 +118,82 @@ func (r *WorkflowRepository) GetNodesByWorkflow(ctx context.Context, workflowID 
 
 // GetEdgesByWorkflow retrieves all edges for a given workflow
 func (r *WorkflowRepository) GetEdgesByWorkflow(ctx context.Context, workflowID uuid.UUID) ([]models.Edge, error) {
-	query := `
-		SELECT id, source, target, type, animated, style_stroke, style_strokewidth,
-		       label, labelstyle_fill, labelstyle_fontweight, source_handle, target_handle,
-		       workflow_id, created_at, updated_at
-		FROM edges
-		WHERE workflow_id = $1
-		ORDER BY created_at
-	`
+	stmt := postgres.SELECT(
+		Edges.ID,
+		Edges.Source,
+		Edges.Target,
+		Edges.Type,
+		Edges.Animated,
+		Edges.StyleStroke,
+		Edges.StyleStrokewidth,
+		Edges.Label,
+		Edges.LabelstyleFill,
+		Edges.LabelstyleFontweight,
+		Edges.SourceHandle,
+		Edges.TargetHandle,
+		Edges.WorkflowID,
+		Edges.CreatedAt,
+		Edges.UpdatedAt,
+	).FROM(
+		Edges,
+	).WHERE(
+		Edges.WorkflowID.EQ(postgres.UUID(workflowID)),
+	).ORDER_BY(
+		Edges.CreatedAt.ASC(),
+	)
 
-	rows, err := r.conn.Query(ctx, query, workflowID)
+	var dbEdges []model.Edges
+	err := stmt.QueryContext(ctx, r.db, &dbEdges)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query edges: %w", err)
 	}
-	defer rows.Close()
 
-	var edges []models.Edge
-	for rows.Next() {
-		var edge models.Edge
-		err := rows.Scan(
-			&edge.ID,
-			&edge.Source,
-			&edge.Target,
-			&edge.Type,
-			&edge.Animated,
-			&edge.StyleStroke,
-			&edge.StyleStrokeWidth,
-			&edge.Label,
-			&edge.LabelStyleFill,
-			&edge.LabelStyleFontWeight,
-			&edge.SourceHandle,
-			&edge.TargetHandle,
-			&edge.WorkflowID,
-			&edge.CreatedAt,
-			&edge.UpdatedAt,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan edge: %w", err)
+	// Convert db models to domain models
+	edges := make([]models.Edge, len(dbEdges))
+	for i, dbEdge := range dbEdges {
+		edge := models.Edge{
+			ID:         dbEdge.ID,
+			Source:     dbEdge.Source,
+			Target:     dbEdge.Target,
+			WorkflowID: dbEdge.WorkflowID,
 		}
-		edges = append(edges, edge)
-	}
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating edges: %w", err)
+		// Handle optional fields (nullable in database)
+		if dbEdge.Type != nil {
+			edge.Type = dbEdge.Type
+		}
+		if dbEdge.Animated != nil {
+			edge.Animated = *dbEdge.Animated
+		}
+		if dbEdge.StyleStroke != nil {
+			edge.StyleStroke = dbEdge.StyleStroke
+		}
+		if dbEdge.StyleStrokewidth != nil {
+			edge.StyleStrokeWidth = dbEdge.StyleStrokewidth
+		}
+		if dbEdge.Label != nil {
+			edge.Label = dbEdge.Label
+		}
+		if dbEdge.LabelstyleFill != nil {
+			edge.LabelStyleFill = dbEdge.LabelstyleFill
+		}
+		if dbEdge.LabelstyleFontweight != nil {
+			edge.LabelStyleFontWeight = dbEdge.LabelstyleFontweight
+		}
+		if dbEdge.SourceHandle != nil {
+			edge.SourceHandle = dbEdge.SourceHandle
+		}
+		if dbEdge.TargetHandle != nil {
+			edge.TargetHandle = dbEdge.TargetHandle
+		}
+		if dbEdge.CreatedAt != nil {
+			edge.CreatedAt = *dbEdge.CreatedAt
+		}
+		if dbEdge.UpdatedAt != nil {
+			edge.UpdatedAt = *dbEdge.UpdatedAt
+		}
+
+		edges[i] = edge
 	}
 
 	return edges, nil
@@ -140,62 +201,137 @@ func (r *WorkflowRepository) GetEdgesByWorkflow(ctx context.Context, workflowID 
 
 // SaveWorkflow creates or updates a workflow and its associated nodes and edges
 func (r *WorkflowRepository) SaveWorkflow(ctx context.Context, workflow *models.Workflow, nodes []models.Node, edges []models.Edge) error {
-	return db.WithTransaction(ctx, func(tx pgx.Tx) error {
-		// Insert or update workflow
-		workflowQuery := `
-			INSERT INTO workflows (id, name, created_at, updated_at)
-			VALUES ($1, $2, NOW(), NOW())
-			ON CONFLICT (id) DO UPDATE SET
-				name = EXCLUDED.name,
-				updated_at = NOW()
-		`
+	// Start a database transaction
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
 
-		_, err := tx.Exec(ctx, workflowQuery, workflow.ID, workflow.Name)
-		if err != nil {
-			return fmt.Errorf("failed to save workflow: %w", err)
-		}
+	// Insert or update workflow using UPSERT
+	workflowStmt := Workflows.INSERT(
+		Workflows.ID,
+		Workflows.Name,
+		Workflows.CreatedAt,
+		Workflows.UpdatedAt,
+	).VALUES(
+		workflow.ID,
+		workflow.Name,
+		postgres.NOW(),
+		postgres.NOW(),
+	).ON_CONFLICT(Workflows.ID).DO_UPDATE(
+		postgres.SET(
+			Workflows.Name.SET(postgres.String(workflow.Name)),
+			Workflows.UpdatedAt.SET(postgres.NOW()),
+		),
+	)
 
-		// Delete existing nodes and edges for this workflow
-		_, err = tx.Exec(ctx, "DELETE FROM edges WHERE workflow_id = $1", workflow.ID)
-		if err != nil {
-			return fmt.Errorf("failed to delete existing edges: %w", err)
-		}
+	_, err = workflowStmt.ExecContext(ctx, tx)
+	if err != nil {
+		return fmt.Errorf("failed to save workflow: %w", err)
+	}
 
-		_, err = tx.Exec(ctx, "DELETE FROM nodes WHERE workflow_id = $1", workflow.ID)
-		if err != nil {
-			return fmt.Errorf("failed to delete existing nodes: %w", err)
-		}
+	deleteEdgesStmt := Edges.DELETE().WHERE(
+		Edges.WorkflowID.EQ(postgres.UUID(workflow.ID)),
+	)
+	_, err = deleteEdgesStmt.ExecContext(ctx, tx)
+	if err != nil {
+		return fmt.Errorf("failed to delete existing edges: %w", err)
+	}
 
-		// Insert nodes
+	deleteNodesStmt := Nodes.DELETE().WHERE(
+		Nodes.WorkflowID.EQ(postgres.UUID(workflow.ID)),
+	)
+	_, err = deleteNodesStmt.ExecContext(ctx, tx)
+	if err != nil {
+		return fmt.Errorf("failed to delete existing nodes: %w", err)
+	}
+
+	if len(nodes) > 0 {
+		// Start with the base INSERT statement
+		insertNodesStmt := Nodes.INSERT(
+			Nodes.ID,
+			Nodes.Type,
+			Nodes.PositionX,
+			Nodes.PositionY,
+			Nodes.Data,
+			Nodes.WorkflowID,
+			Nodes.CreatedAt,
+			Nodes.UpdatedAt,
+		)
+
+		// Add VALUES for each node
 		for _, node := range nodes {
-			nodeQuery := `
-				INSERT INTO nodes (id, type, position_x, position_y, data, workflow_id, created_at, updated_at)
-				VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-			`
-			_, err = tx.Exec(ctx, nodeQuery, node.ID, node.Type, node.PositionX, node.PositionY, node.Data, workflow.ID)
-			if err != nil {
-				return fmt.Errorf("failed to insert node %s: %w", node.ID, err)
+			// Ensure RawData is up to date
+			if err := node.UpdateRawDataFromData(); err != nil {
+				return fmt.Errorf("failed to update raw data for node %s: %w", node.ID, err)
 			}
+
+			insertNodesStmt = insertNodesStmt.VALUES(
+				node.ID,
+				node.Type,
+				node.PositionX,
+				node.PositionY,
+				string(node.RawData), // Convert []byte to string for JSONB
+				workflow.ID,
+				postgres.NOW(),
+				postgres.NOW(),
+			)
 		}
 
-		// Insert edges
+		_, err = insertNodesStmt.ExecContext(ctx, tx)
+		if err != nil {
+			return fmt.Errorf("failed to insert nodes: %w", err)
+		}
+	}
+
+	// Insert edges using batch insert
+	if len(edges) > 0 {
+		// Start with the base INSERT statement
+		insertEdgesStmt := Edges.INSERT(
+			Edges.ID,
+			Edges.Source,
+			Edges.Target,
+			Edges.Type,
+			Edges.Animated,
+			Edges.StyleStroke,
+			Edges.StyleStrokewidth,
+			Edges.Label,
+			Edges.LabelstyleFill,
+			Edges.LabelstyleFontweight,
+			Edges.SourceHandle,
+			Edges.TargetHandle,
+			Edges.WorkflowID,
+			Edges.CreatedAt,
+			Edges.UpdatedAt,
+		)
+
+		// Add VALUES for each edge
 		for _, edge := range edges {
-			edgeQuery := `
-				INSERT INTO edges (id, source, target, type, animated, style_stroke, style_strokewidth,
-				                  label, labelstyle_fill, labelstyle_fontweight, source_handle, target_handle,
-				                  workflow_id, created_at, updated_at)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW())
-			`
-			_, err = tx.Exec(ctx, edgeQuery,
-				edge.ID, edge.Source, edge.Target, edge.Type, edge.Animated,
-				edge.StyleStroke, edge.StyleStrokeWidth, edge.Label,
-				edge.LabelStyleFill, edge.LabelStyleFontWeight,
-				edge.SourceHandle, edge.TargetHandle, workflow.ID)
-			if err != nil {
-				return fmt.Errorf("failed to insert edge %s: %w", edge.ID, err)
-			}
+			insertEdgesStmt = insertEdgesStmt.VALUES(
+				edge.ID,
+				edge.Source,
+				edge.Target,
+				edge.Type,
+				edge.Animated,
+				edge.StyleStroke,
+				edge.StyleStrokeWidth,
+				edge.Label,
+				edge.LabelStyleFill,
+				edge.LabelStyleFontWeight,
+				edge.SourceHandle,
+				edge.TargetHandle,
+				workflow.ID,
+				postgres.NOW(),
+				postgres.NOW(),
+			)
 		}
 
-		return nil
-	})
+		_, err = insertEdgesStmt.ExecContext(ctx, tx)
+		if err != nil {
+			return fmt.Errorf("failed to insert edges: %w", err)
+		}
+	}
+
+	return tx.Commit()
 }

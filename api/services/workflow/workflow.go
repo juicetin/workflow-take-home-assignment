@@ -78,6 +78,25 @@ func (s *Service) HandleExecuteWorkflow(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Save updated workflow positions if nodes and edges are provided in the request
+	if len(executeRequest.Nodes) > 0 || len(executeRequest.Edges) > 0 {
+		slog.Debug("Saving updated workflow positions", "nodeCount", len(executeRequest.Nodes), "edgeCount", len(executeRequest.Edges))
+		
+		workflowRequest := &models.WorkflowRequest{
+			ID:    id,
+			Name:  workflow.Name,
+			Nodes: executeRequest.Nodes,
+			Edges: executeRequest.Edges,
+		}
+
+		if err := s.workflowService.SaveWorkflowFromRequest(r.Context(), workflowRequest); err != nil {
+			slog.Error("Failed to save updated workflow positions", "id", id, "error", err)
+			// Don't fail the execution if saving positions fails - just log it
+		} else {
+			slog.Debug("Successfully saved updated workflow positions", "id", id)
+		}
+	}
+
 	// Return execution result
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

@@ -46,7 +46,7 @@ func main() {
 	}
 	defer conn.Release()
 
-	workflowService, err := workflow.NewService(conn.Conn())
+	workflowService, err := workflow.NewService(conn.Conn(), dbConfig)
 	if err != nil {
 		slog.Error("Failed to create workflow service", "error", err)
 		return

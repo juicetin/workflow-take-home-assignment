@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -8,22 +9,31 @@ import (
 
 	"workflow-code-test/api/internal/repository"
 	"workflow-code-test/api/internal/service"
+	"workflow-code-test/api/pkg/db"
 )
 
 type Service struct {
 	db              *pgx.Conn
+	sqlDB           *sql.DB
 	workflowService *service.WorkflowService
 }
 
-func NewService(db *pgx.Conn) (*Service, error) {
-	// Create repository
-	workflowRepo := repository.NewWorkflowRepository(db)
+func NewService(conn *pgx.Conn, config *db.Config) (*Service, error) {
+	// Create sql.DB connection for Jet repository
+	sqlDB, err := db.GetJetDB(config)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create repository using sql.DB
+	workflowRepo := repository.NewWorkflowRepository(sqlDB)
 
 	// Create service
 	workflowService := service.NewWorkflowService(workflowRepo)
 
 	return &Service{
-		db:              db,
+		db:              conn,
+		sqlDB:           sqlDB,
 		workflowService: workflowService,
 	}, nil
 }

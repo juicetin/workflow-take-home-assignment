@@ -10,6 +10,8 @@ import (
 type ExecutionRequest struct {
 	FormData  map[string]interface{} `json:"formData"`
 	Condition map[string]interface{} `json:"condition"`
+	Nodes     []NodeRequest          `json:"nodes,omitempty"`
+	Edges     []EdgeRequest          `json:"edges,omitempty"`
 }
 
 // ExecutionResponse represents the complete execution result
