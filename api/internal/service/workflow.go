@@ -18,12 +18,11 @@ type WorkflowService struct {
 
 func NewWorkflowService(repo *repository.WorkflowRepository) *WorkflowService {
 	// Initialize execution services
-	weatherService := execution.NewDefaultWeatherService(false) // Use real API
 	emailService := execution.NewInMemoryEmailService()
 	validator := execution.NewDefaultInputValidator()
 	
 	// Create execution engine
-	executionEngine := execution.NewEngine(weatherService, emailService, validator)
+	executionEngine := execution.NewEngine(emailService, validator)
 	
 	return &WorkflowService{
 		repo:           repo,

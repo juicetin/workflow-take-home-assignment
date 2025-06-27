@@ -13,14 +13,9 @@ import (
 
 // Engine handles workflow execution logic
 type Engine struct {
-	weatherService WeatherService
-	emailService   EmailService
-	validator      InputValidator
-}
-
-// WeatherService defines the interface for weather API calls
-type WeatherService interface {
-	GetTemperature(ctx context.Context, city string) (*models.WeatherAPIResponse, error)
+	integrationService *IntegrationService
+	emailService       EmailService
+	validator          InputValidator
 }
 
 // EmailService defines the interface for email operations
@@ -33,12 +28,26 @@ type InputValidator interface {
 	ValidateFormData(formData map[string]interface{}, nodeData *models.FormNodeData) error
 }
 
+// APIClient interface for making HTTP calls
+type APIClient interface {
+	CallAPI(ctx context.Context, url string) (map[string]interface{}, error)
+}
+
 // NewEngine creates a new workflow execution engine
-func NewEngine(weatherService WeatherService, emailService EmailService, validator InputValidator) *Engine {
+func NewEngine(emailService EmailService, validator InputValidator) *Engine {
 	return &Engine{
-		weatherService: weatherService,
-		emailService:   emailService,
-		validator:      validator,
+		integrationService: NewIntegrationService(NewHTTPAPIClient()),
+		emailService:       emailService,
+		validator:          validator,
+	}
+}
+
+// NewEngineWithAPIClient creates a new workflow execution engine with custom API client
+func NewEngineWithAPIClient(emailService EmailService, validator InputValidator, apiClient APIClient) *Engine {
+	return &Engine{
+		integrationService: NewIntegrationService(apiClient),
+		emailService:       emailService,
+		validator:          validator,
 	}
 }
 
@@ -261,35 +270,31 @@ func (e *Engine) executeFormNode(ctx context.Context, node *models.NodeResponse,
 	return execCtx.FormData, nil
 }
 
-// executeIntegrationNode executes an integration node (weather API)
+// executeIntegrationNode executes an integration node (API call)
 func (e *Engine) executeIntegrationNode(ctx context.Context, node *models.NodeResponse, execCtx *models.ExecutionContext) (interface{}, error) {
 	slog.Debug("Executing integration node", "nodeId", node.ID)
 	
-	// Get city from form data
-	cityValue, ok := execCtx.GetVariable("city")
-	if !ok {
-		return nil, fmt.Errorf("city field not found in form data")
+	// Prepare input variables for the integration
+	inputVariables := make(map[string]interface{})
+	for key, value := range execCtx.FormData {
+		inputVariables[key] = value
 	}
 	
-	city, ok := cityValue.(string)
-	if !ok {
-		return nil, fmt.Errorf("city field must be a string")
-	}
-	
-	// Call weather API
-	weatherResponse, err := e.weatherService.GetTemperature(ctx, city)
+	// Execute the integration
+	result, err := e.integrationService.ExecuteIntegration(ctx, node.Data, inputVariables)
 	if err != nil {
-		return nil, fmt.Errorf("weather API call failed: %w", err)
+		return nil, fmt.Errorf("integration execution failed: %w", err)
 	}
 	
-	// Store temperature in context for condition node
-	execCtx.SetVariable("temperature", weatherResponse.Temperature)
-	execCtx.SetVariable("location", weatherResponse.Location)
+	// Store results in execution context for downstream nodes
+	if temperature, ok := result["temperature"]; ok {
+		execCtx.SetVariable("temperature", temperature)
+	}
+	if location, ok := result["location"]; ok {
+		execCtx.SetVariable("location", location)
+	}
 	
-	return map[string]interface{}{
-		"temperature": weatherResponse.Temperature,
-		"location":    weatherResponse.Location,
-	}, nil
+	return result, nil
 }
 
 // executeConditionNode executes a condition node with threshold comparison

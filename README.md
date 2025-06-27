@@ -29,6 +29,11 @@ A modern workflow editor app for designing and executing custom automation workf
 + what constitutes a valid workflow
   + only one start node
   + ALL end nodes have to be reachable for the full workflow to be valid
+  
+## TODOs
++ testing
+  + we would want contract testing to ensure the behaviour we assume in the mocks, match the real API behaviour
+    + an appropriate time to do this could be in CI on PR merge only
 
 
 ## 🛠️ Tech Stack

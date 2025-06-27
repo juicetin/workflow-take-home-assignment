@@ -83,11 +83,24 @@ type FormField struct {
 	Placeholder string   `json:"placeholder,omitempty"`
 }
 
-// WeatherNodeData represents the data structure for weather/integration nodes
-type WeatherNodeData struct {
-	APIEndpoint string            `json:"apiEndpoint"`
-	CityField   string            `json:"cityField"`
-	Headers     map[string]string `json:"headers,omitempty"`
+// IntegrationNodeData represents the data structure for integration nodes
+type IntegrationNodeData struct {
+	Metadata IntegrationMetadata `json:"metadata"`
+}
+
+// IntegrationMetadata contains the integration configuration
+type IntegrationMetadata struct {
+	APIEndpoint      string           `json:"apiEndpoint"`
+	InputVariables   []string         `json:"inputVariables"`
+	OutputVariables  []string         `json:"outputVariables"`
+	Options          []CityOption     `json:"options"`
+}
+
+// CityOption represents a city with its coordinates
+type CityOption struct {
+	City string  `json:"city"`
+	Lat  float64 `json:"lat"`
+	Lon  float64 `json:"lon"`
 }
 
 // ConditionNodeData represents the data structure for condition nodes

@@ -10,12 +10,15 @@ import (
 
 func TestEngine_ExecuteWorkflow(t *testing.T) {
 	// Create services
-	weatherService := NewMockWeatherService()
 	emailService := NewInMemoryEmailService()
 	validator := NewDefaultInputValidator()
 	
-	// Create engine
-	engine := NewEngine(weatherService, emailService, validator)
+	// Create mock API client with default weather responses
+	mockAPIClient := NewMockAPIClient()
+	mockAPIClient.SetDefaultWeatherResponse()
+	
+	// Create engine with mock API client
+	engine := NewEngineWithAPIClient(emailService, validator, mockAPIClient)
 	
 	// Create test workflow
 	workflow := &models.WorkflowResponse{
@@ -34,7 +37,15 @@ func TestEngine_ExecuteWorkflow(t *testing.T) {
 			{
 				ID:   "weather",
 				Type: models.NodeTypeIntegration,
-				Data: json.RawMessage(`{}`),
+				Data: json.RawMessage(`{
+					"metadata": {
+						"apiEndpoint": "https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true",
+						"options": [
+							{"city": "Sydney", "lat": -33.8688, "lon": 151.2093},
+							{"city": "Melbourne", "lat": -37.8136, "lon": 144.9631}
+						]
+					}
+				}`),
 			},
 			{
 				ID:   "condition",
@@ -156,6 +167,79 @@ func TestDefaultInputValidator_ValidateFormData(t *testing.T) {
 	)
 	if err == nil {
 		t.Error("Expected error for missing required field, got none")
+	}
+}
+
+func TestEngine_ExecuteWorkflow_APIFailure(t *testing.T) {
+	// Create services
+	emailService := NewInMemoryEmailService()
+	validator := NewDefaultInputValidator()
+	
+	// Create mock API client that returns an error
+	mockAPIClient := NewMockAPIClient()
+	mockAPIClient.SetAPIError("service unavailable")
+	
+	// Create engine with mock API client
+	engine := NewEngineWithAPIClient(emailService, validator, mockAPIClient)
+	
+	// Create test workflow (same as successful test)
+	workflow := &models.WorkflowResponse{
+		ID: "test-workflow",
+		Nodes: []models.NodeResponse{
+			{
+				ID:   "start",
+				Type: models.NodeTypeStart,
+				Data: json.RawMessage(`{}`),
+			},
+			{
+				ID:   "form",
+				Type: models.NodeTypeForm,
+				Data: json.RawMessage(`{}`),
+			},
+			{
+				ID:   "weather",
+				Type: models.NodeTypeIntegration,
+				Data: json.RawMessage(`{
+					"metadata": {
+						"apiEndpoint": "https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true",
+						"options": [
+							{"city": "Sydney", "lat": -33.8688, "lon": 151.2093}
+						]
+					}
+				}`),
+			},
+		},
+		Edges: []models.EdgeResponse{
+			{ID: "e1", Source: "start", Target: "form"},
+			{ID: "e2", Source: "form", Target: "weather"},
+		},
+	}
+	
+	// Create execution request
+	req := &models.ExecutionRequest{
+		FormData: map[string]interface{}{
+			"city": "Sydney",
+		},
+	}
+	
+	// Execute workflow - should fail at integration step
+	result, err := engine.ExecuteWorkflow(context.Background(), workflow, req)
+	if err != nil {
+		t.Fatalf("Expected no error from ExecuteWorkflow, got %v", err)
+	}
+	
+	// Verify result shows failure
+	if result.Status != "failed" {
+		t.Errorf("Expected status 'failed', got '%s'", result.Status)
+	}
+	
+	if result.Error == nil {
+		t.Error("Expected error message in result")
+	}
+	
+	// Should have executed start and form, but failed on integration
+	if len(result.Steps) < 2 {
+		t.Errorf("Expected at least 2 steps, got %d", len(result.Steps))
 	}
 }
 
