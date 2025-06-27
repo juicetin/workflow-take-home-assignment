@@ -9,16 +9,12 @@ import (
 )
 
 func TestEngine_ExecuteWorkflow(t *testing.T) {
-	// Create services
-	emailService := NewInMemoryEmailService()
-	validator := NewDefaultInputValidator()
-
 	// Create mock API client with default weather responses
 	mockAPIClient := NewMockAPIClient()
 	mockAPIClient.SetDefaultWeatherResponse()
 
 	// Create engine with mock API client
-	engine := NewEngineWithAPIClient(emailService, validator, mockAPIClient)
+	engine := NewEngineWithAPIClient(mockAPIClient)
 
 	// Create test workflow
 	workflow := &models.WorkflowResponse{
@@ -101,7 +97,7 @@ func TestEngine_ExecuteWorkflow(t *testing.T) {
 	}
 
 	// Verify email was tracked
-	sentEmails := emailService.GetSentEmails()
+	sentEmails := engine.emailService.GetSentEmails()
 	if len(sentEmails) != 1 {
 		t.Errorf("Expected 1 email to be tracked, got %d", len(sentEmails))
 	}
@@ -171,16 +167,12 @@ func TestDefaultInputValidator_ValidateFormData(t *testing.T) {
 }
 
 func TestEngine_ExecuteWorkflow_APIFailure(t *testing.T) {
-	// Create services
-	emailService := NewInMemoryEmailService()
-	validator := NewDefaultInputValidator()
-
 	// Create mock API client that returns an error
 	mockAPIClient := NewMockAPIClient()
 	mockAPIClient.SetAPIError("service unavailable")
 
 	// Create engine with mock API client
-	engine := NewEngineWithAPIClient(emailService, validator, mockAPIClient)
+	engine := NewEngineWithAPIClient(mockAPIClient)
 
 	// Create test workflow (same as successful test)
 	workflow := &models.WorkflowResponse{

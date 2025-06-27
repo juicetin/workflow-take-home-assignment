@@ -14,18 +14,8 @@ import (
 // Engine handles workflow execution logic
 type Engine struct {
 	integrationService *IntegrationService
-	emailService       EmailService
-	validator          InputValidator
-}
-
-// EmailService defines the interface for email operations
-type EmailService interface {
-	SendEmail(ctx context.Context, to, subject, body string) error
-}
-
-// InputValidator defines the interface for input validation
-type InputValidator interface {
-	ValidateFormData(formData map[string]interface{}, nodeData *models.FormNodeData) error
+	emailService       *InMemoryEmailService
+	validator          *DefaultInputValidator
 }
 
 // APIClient interface for making HTTP calls
@@ -34,20 +24,20 @@ type APIClient interface {
 }
 
 // NewEngine creates a new workflow execution engine
-func NewEngine(emailService EmailService, validator InputValidator) *Engine {
+func NewEngine() *Engine {
 	return &Engine{
 		integrationService: NewIntegrationService(NewHTTPAPIClient()),
-		emailService:       emailService,
-		validator:          validator,
+		emailService:       NewInMemoryEmailService(),
+		validator:          NewDefaultInputValidator(),
 	}
 }
 
 // NewEngineWithAPIClient creates a new workflow execution engine with custom API client
-func NewEngineWithAPIClient(emailService EmailService, validator InputValidator, apiClient APIClient) *Engine {
+func NewEngineWithAPIClient(apiClient APIClient) *Engine {
 	return &Engine{
 		integrationService: NewIntegrationService(apiClient),
-		emailService:       emailService,
-		validator:          validator,
+		emailService:       NewInMemoryEmailService(),
+		validator:          NewDefaultInputValidator(),
 	}
 }
 

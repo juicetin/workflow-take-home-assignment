@@ -12,6 +12,12 @@ A modern workflow editor app for designing and executing custom automation workf
     + and as such precludes re-use of nodes/edges across workflows in future - making this call for now for simplicity, and to not prematurely optimise for a use case that hasn't been defined in the project (take-home task) spec
   + dumping all of `data` into just a jsonb column, as based on the task right now and even assuming new nodes types, etc. will be introduced in future, we shouldn't need to search on data within the data block at least for the purpose of the workflow editor
     + there may be a use case for searching over them more for analytics/usage purposes, but that should be deferred to another DB better served for that use case, e.g. elastic search or similar
++ golang
+  + don't use any interfaces where there is only one concrete implementation
+    + however, useful for if we need to do any DI for swapping out real vs mock/test implementations for unit testing
+    + I've taken this path even for things like 'email service' which will obviously (?) have multiple providers, but since the current implementation is only an in-memory mock, no need to introduce the abstraction now
++ testing
+  + unit tests provide a good dev loop for making changes - but they don't give confidence that the real application is working - that's the job of integration/e2e tests
 
 ## Assumptions
 + the POST /execute endpoint is supposed to provide the full workflow definition + form inputs - from the initial clone, it seems that it only provides form inputs and not the full workflow (nodes+edges data), assuming this is part of the task
@@ -34,7 +40,9 @@ A modern workflow editor app for designing and executing custom automation workf
 + testing
   + we would want contract testing to ensure the behaviour we assume in the mocks, match the real API behaviour
     + an appropriate time to do this could be in CI on PR merge only
+  + integration testing - hitting the endpoints on a running instance of the application to check we are actually able to integrate with 3rd party services correctly
 
+---
 
 ## 🛠️ Tech Stack
 
