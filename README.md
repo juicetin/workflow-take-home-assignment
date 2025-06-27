@@ -27,6 +27,7 @@ A modern workflow editor app for designing and executing custom automation workf
     + I've taken this path even for things like 'email service' which will obviously (?) have multiple providers, but since the current implementation is only an in-memory mock, no need to introduce the abstraction now
 + testing
   + unit tests provide a good dev loop for making changes - but they don't give confidence that the real application is working - that's the job of integration/e2e tests
+  + unit tested imo the most critical parts like workflow engine, validation, and didn't spend as much time on other areas - these unit tests caught issues in other areas
 
 ## Assumptions
 + the POST /execute endpoint is supposed to provide the full workflow definition + form inputs - from the initial clone, it seems that it only provides form inputs and not the full workflow (nodes+edges data), assuming this is part of the task
@@ -59,6 +60,9 @@ A modern workflow editor app for designing and executing custom automation workf
       + an alternative would be to define the test data as json, then marshal it (and if the test data is defined incorrectly, tests would fail)
       + to account for the above ^, and surface specific, actionable errors, we could define json schemas and validate them, before feeding into the tests
       + but this is somewhat premature for a pain point that may or may not be real, so I've left it as is for now
++ performance (but feels premature at this early stage, left as todos), particularly for future large workflows
+  + object pooling could help with GC churn iterating over and executing nodes
+  + can provide more initial capacities for lists, maps, etc. created using `make`, to reduce memory reallocation churn when growing the lists - a fairly accurate heuristic on top of number of nodes/edges can be used as these are workflows, not arbitrary graphs that could be wildly different in density
 
 ---
 
