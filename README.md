@@ -2,6 +2,10 @@
 
 A modern workflow editor app for designing and executing custom automation workflows (e.g., weather notifications). Users can visually build workflows, configure parameters, and view real-time execution results.
 
+## Post-task-implementation instructions
++ Follow the existing quick-start guide below
++ inside the `api/` folder, run `make migrate-up-seed` to apply the DB changes, as well as seed some test data so the initial `GET` call on the frontend doesn't fail
+
 ## Design/Tooling decisions
 + golang-migrate - went with this tool for db migrations based on having the most stars of similar tooling in go-land and still being maintained with occasional updates (last being Apr 24, 2 months ago as of writing)
   + I was burning some time figuring out the golang db migration tool landscape, and decided to stop trying to find a more type-strict go-native tool where you could write migrations using a query-builder of sorts, that could use go-defined types and structs
@@ -40,12 +44,16 @@ A modern workflow editor app for designing and executing custom automation workf
 + what constitutes a valid workflow
   + only one start node
   + ALL end nodes have to be reachable for the full workflow to be valid
++ data
+  + seeding the DB with a default record would be okay, given the frontend expects that particular workflow to already exist
   
 ## TODOs
 + testing
   + we would want contract testing to ensure the behaviour we assume in the mocks, match the real API behaviour
     + an appropriate time to do this could be in CI on PR merge only
   + integration testing - hitting the endpoints on a running instance of the application to check we are actually able to integrate with 3rd party services correctly
+    + test that after executing a modified workflow (POST /execute), and retrieving that workflow (/GET /workflows/{id}), the updated version was persisted
+    + testing this with extensive mocks is an option, but my medium-conviction, weakly held opinion is excessively mocking services to unit test large swaths of application logic makes for brittle and hard to maintain tests - better to create service mocks of external services and inject those for integration tests
   + to consider - convenience
     + because of all the different typed nodes, it's a bit of a chore typing out all the test data based on the nested go types
       + an alternative would be to define the test data as json, then marshal it (and if the test data is defined incorrectly, tests would fail)
