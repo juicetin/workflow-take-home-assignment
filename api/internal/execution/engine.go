@@ -244,22 +244,30 @@ func (e *Engine) executeFormNode(ctx context.Context, node *models.NodeResponse,
 
 	// Parse node data if available for validation
 	var formData models.FormNodeData
-	if len(node.Data) > 0 {
-		if err := json.Unmarshal(node.Data, &formData); err != nil {
-			slog.Warn("Failed to parse form node data, proceeding without validation", "error", err)
-		} else {
-			// Validate form input
-			if err := e.validator.ValidateFormData(execCtx.FormData, &formData); err != nil {
-				return nil, fmt.Errorf("form validation failed: %w", err)
-			}
-		}
+	if len(node.Data) == 0 {
+		return e.storeAndReturnFormData(execCtx)
 	}
 
+	err := json.Unmarshal(node.Data, &formData)
+	if err != nil {
+		slog.Warn("Failed to parse form node data, proceeding without validation", "error", err)
+		return e.storeAndReturnFormData(execCtx)
+	}
+
+	// Validate form input
+	err = e.validator.ValidateFormData(execCtx.FormData, &formData)
+	if err != nil {
+		return nil, fmt.Errorf("form validation failed: %w", err)
+	}
+
+	return e.storeAndReturnFormData(execCtx)
+}
+
+func (e *Engine) storeAndReturnFormData(execCtx *models.ExecutionContext) (interface{}, error) {
 	// Store validated form data in context
 	for key, value := range execCtx.FormData {
 		execCtx.SetVariable(key, value)
 	}
-
 	return execCtx.FormData, nil
 }
 
