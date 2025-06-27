@@ -180,48 +180,25 @@ func (e *Engine) executeNode(ctx context.Context, node *models.NodeResponse, nod
 func (e *Engine) continueToNextNodes(ctx context.Context, currentNode *models.NodeResponse, nodeMap map[string]*models.NodeResponse, edgeMap map[string][]models.EdgeResponse, execCtx *models.ExecutionContext) error {
 	edges := edgeMap[currentNode.ID]
 	
+	// For non-condition nodes, follow all edges
+	if currentNode.Type != models.NodeTypeCondition {
+		return e.executeNextNodes(ctx, edges, nodeMap, edgeMap, execCtx)
+	}
+	
 	// Special handling for condition nodes
-	if currentNode.Type == models.NodeTypeCondition {
-		conditionMet, ok := execCtx.GetVariable("conditionMet")
-		if !ok {
-			return fmt.Errorf("condition result not found in context")
-		}
-		
-		conditionResult, ok := conditionMet.(bool)
-		if !ok {
-			return fmt.Errorf("condition result must be boolean")
-		}
-		
-		// Find the appropriate edge based on condition result
-		for _, edge := range edges {
-			var shouldFollow bool
-			
-			if edge.SourceHandle != nil {
-				// Handle explicit source handles (true/false)
-				if *edge.SourceHandle == "true" && conditionResult {
-					shouldFollow = true
-				} else if *edge.SourceHandle == "false" && !conditionResult {
-					shouldFollow = true
-				}
-			} else {
-				// If no source handle specified, follow if condition is true
-				shouldFollow = conditionResult
-			}
-			
-			if shouldFollow {
-				nextNode := nodeMap[edge.Target]
-				if nextNode == nil {
-					return fmt.Errorf("next node not found: %s", edge.Target)
-				}
-				
-				if err := e.executeNode(ctx, nextNode, nodeMap, edgeMap, execCtx); err != nil {
-					return err
-				}
-			}
-		}
-	} else {
-		// For non-condition nodes, follow all edges
-		for _, edge := range edges {
+	conditionMet, ok := execCtx.GetVariable("conditionMet")
+	if !ok {
+		return fmt.Errorf("condition result not found in context")
+	}
+	
+	conditionResult, ok := conditionMet.(bool)
+	if !ok {
+		return fmt.Errorf("condition result must be boolean")
+	}
+	
+	// Find the appropriate edges based on condition result
+	for _, edge := range edges {
+		if e.shouldFollowEdge(edge, conditionResult) {
 			nextNode := nodeMap[edge.Target]
 			if nextNode == nil {
 				return fmt.Errorf("next node not found: %s", edge.Target)
@@ -234,6 +211,32 @@ func (e *Engine) continueToNextNodes(ctx context.Context, currentNode *models.No
 	}
 	
 	return nil
+}
+
+// executeNextNodes executes all connected nodes for non-condition nodes
+func (e *Engine) executeNextNodes(ctx context.Context, edges []models.EdgeResponse, nodeMap map[string]*models.NodeResponse, edgeMap map[string][]models.EdgeResponse, execCtx *models.ExecutionContext) error {
+	for _, edge := range edges {
+		nextNode := nodeMap[edge.Target]
+		if nextNode == nil {
+			return fmt.Errorf("next node not found: %s", edge.Target)
+		}
+		
+		if err := e.executeNode(ctx, nextNode, nodeMap, edgeMap, execCtx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// shouldFollowEdge determines if an edge should be followed based on condition result
+func (e *Engine) shouldFollowEdge(edge models.EdgeResponse, conditionResult bool) bool {
+	if edge.SourceHandle != nil {
+		// Handle explicit source handles (true/false)
+		return (*edge.SourceHandle == "true" && conditionResult) || 
+			   (*edge.SourceHandle == "false" && !conditionResult)
+	}
+	// If no source handle specified, follow if condition is true
+	return conditionResult
 }
 
 // executeStartNode executes a start node
