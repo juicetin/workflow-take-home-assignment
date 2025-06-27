@@ -2,7 +2,6 @@ package execution
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"workflow-code-test/api/internal/models"
@@ -23,40 +22,88 @@ func TestEngine_ExecuteWorkflow(t *testing.T) {
 			{
 				ID:   "start",
 				Type: models.NodeTypeStart,
-				Data: json.RawMessage(`{}`),
+				Data: models.StartNodeData{
+					Label:       "Start",
+					Description: "Begin workflow",
+					Metadata: models.StartNodeMetadata{
+						HasHandles: models.HandleConfig{Source: true, Target: false},
+					},
+				},
 			},
 			{
 				ID:   "form",
 				Type: models.NodeTypeForm,
-				Data: json.RawMessage(`{}`),
+				Data: models.FormNodeData{
+					Label:       "Form",
+					Description: "User input form",
+					Metadata: models.FormNodeMetadata{
+						HasHandles:      models.HandleConfig{Source: true, Target: true},
+						InputFields:     []string{"name", "email", "city"},
+						OutputVariables: []string{"name", "email", "city"},
+					},
+				},
 			},
 			{
 				ID:   "weather",
 				Type: models.NodeTypeIntegration,
-				Data: json.RawMessage(`{
-					"metadata": {
-						"apiEndpoint": "https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true",
-						"options": [
-							{"city": "Sydney", "lat": -33.8688, "lon": 151.2093},
-							{"city": "Melbourne", "lat": -37.8136, "lon": 144.9631}
-						]
-					}
-				}`),
+				Data: models.IntegrationNodeData{
+					Label:       "Weather API",
+					Description: "Fetch weather data",
+					Metadata: models.IntegrationNodeMetadata{
+						HasHandles:     models.HandleConfig{Source: true, Target: true},
+						InputVariables: []string{"city"},
+						APIEndpoint:    "https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true",
+						Options: []models.LocationOption{
+							{City: "Sydney", Lat: -33.8688, Lon: 151.2093},
+							{City: "Melbourne", Lat: -37.8136, Lon: 144.9631},
+						},
+						OutputVariables: []string{"temperature"},
+					},
+				},
 			},
 			{
 				ID:   "condition",
 				Type: models.NodeTypeCondition,
-				Data: json.RawMessage(`{}`),
+				Data: models.ConditionNodeData{
+					Label:       "Temperature Check",
+					Description: "Check temperature threshold",
+					Metadata: models.ConditionNodeMetadata{
+						HasHandles: models.HandleConfigWithBranches{
+							Source: []string{"true", "false"},
+							Target: true,
+						},
+						ConditionExpression: "temperature > 25",
+						OutputVariables:     []string{"conditionMet"},
+					},
+				},
 			},
 			{
 				ID:   "email",
 				Type: models.NodeTypeEmail,
-				Data: json.RawMessage(`{}`),
+				Data: models.EmailNodeData{
+					Label:       "Send Email",
+					Description: "Send weather alert",
+					Metadata: models.EmailNodeMetadata{
+						HasHandles:     models.HandleConfig{Source: true, Target: true},
+						InputVariables: []string{"name", "email", "temperature"},
+						EmailTemplate: models.EmailTemplate{
+							Subject: "Weather Alert",
+							Body:    "Hello {{name}}, temperature is {{temperature}}°C",
+						},
+						OutputVariables: []string{"emailSent"},
+					},
+				},
 			},
 			{
 				ID:   "end",
 				Type: models.NodeTypeEnd,
-				Data: json.RawMessage(`{}`),
+				Data: models.EndNodeData{
+					Label:       "End",
+					Description: "Workflow complete",
+					Metadata: models.EndNodeMetadata{
+						HasHandles: models.HandleConfig{Source: false, Target: true},
+					},
+				},
 			},
 		},
 		Edges: []models.EdgeResponse{
@@ -127,17 +174,12 @@ func TestDefaultInputValidator_ValidateFormData(t *testing.T) {
 
 	// Test with field definitions
 	formData := &models.FormNodeData{
-		Fields: []models.FormField{
-			{
-				Name:     "name",
-				Type:     "text",
-				Required: true,
-			},
-			{
-				Name:     "email",
-				Type:     "email",
-				Required: true,
-			},
+		Label:       "Test Form",
+		Description: "Test form validation",
+		Metadata: models.FormNodeMetadata{
+			HasHandles:      models.HandleConfig{Source: true, Target: true},
+			InputFields:     []string{"name", "email"},
+			OutputVariables: []string{"name", "email"},
 		},
 	}
 
@@ -181,24 +223,43 @@ func TestEngine_ExecuteWorkflow_APIFailure(t *testing.T) {
 			{
 				ID:   "start",
 				Type: models.NodeTypeStart,
-				Data: json.RawMessage(`{}`),
+				Data: models.StartNodeData{
+					Label:       "Start",
+					Description: "Begin workflow",
+					Metadata: models.StartNodeMetadata{
+						HasHandles: models.HandleConfig{Source: true, Target: false},
+					},
+				},
 			},
 			{
 				ID:   "form",
 				Type: models.NodeTypeForm,
-				Data: json.RawMessage(`{}`),
+				Data: models.FormNodeData{
+					Label:       "Form",
+					Description: "User input form",
+					Metadata: models.FormNodeMetadata{
+						HasHandles:      models.HandleConfig{Source: true, Target: true},
+						InputFields:     []string{"name", "email", "city"},
+						OutputVariables: []string{"name", "email", "city"},
+					},
+				},
 			},
 			{
 				ID:   "weather",
 				Type: models.NodeTypeIntegration,
-				Data: json.RawMessage(`{
-					"metadata": {
-						"apiEndpoint": "https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true",
-						"options": [
-							{"city": "Sydney", "lat": -33.8688, "lon": 151.2093}
-						]
-					}
-				}`),
+				Data: models.IntegrationNodeData{
+					Label:       "Weather API",
+					Description: "Fetch weather data",
+					Metadata: models.IntegrationNodeMetadata{
+						HasHandles:     models.HandleConfig{Source: true, Target: true},
+						InputVariables: []string{"city"},
+						APIEndpoint:    "https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true",
+						Options: []models.LocationOption{
+							{City: "Sydney", Lat: -33.8688, Lon: 151.2093},
+						},
+						OutputVariables: []string{"temperature"},
+					},
+				},
 			},
 		},
 		Edges: []models.EdgeResponse{

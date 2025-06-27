@@ -34,7 +34,8 @@ type Node struct {
 	Type       string          `json:"type" db:"type"`
 	PositionX  float64         `json:"-" db:"position_x"`
 	PositionY  float64         `json:"-" db:"position_y"`
-	Data       json.RawMessage `json:"data" db:"data"`
+	Data       NodeData        `json:"data" db:"-"` // Strongly typed data
+	RawData    json.RawMessage `json:"-" db:"data"` // For database storage
 	WorkflowID uuid.UUID       `json:"-" db:"workflow_id"`
 	CreatedAt  time.Time       `json:"-" db:"created_at"`
 	UpdatedAt  time.Time       `json:"-" db:"updated_at"`
@@ -48,10 +49,10 @@ type Position struct {
 
 // NodeResponse represents a node as returned to the frontend
 type NodeResponse struct {
-	ID       string          `json:"id"`
-	Type     string          `json:"type"`
-	Position Position        `json:"position"`
-	Data     json.RawMessage `json:"data"`
+	ID       string   `json:"id"`
+	Type     string   `json:"type"`
+	Position Position `json:"position"`
+	Data     NodeData `json:"data"`
 }
 
 // ToResponse converts a Node to NodeResponse format for API responses
@@ -69,21 +70,28 @@ func (n *Node) ToResponse() NodeResponse {
 
 // NodeRequest represents a node as sent from the frontend
 type NodeRequest struct {
-	ID       string          `json:"id"`
-	Type     string          `json:"type"`
-	Position Position        `json:"position"`
-	Data     json.RawMessage `json:"data"`
+	ID       string   `json:"id"`
+	Type     string   `json:"type"`
+	Position Position `json:"position"`
+	Data     NodeData `json:"data"`
 }
 
 // ToNode converts a NodeRequest to a Node for database storage
-func (nr *NodeRequest) ToNode() *Node {
+func (nr *NodeRequest) ToNode() (*Node, error) {
+	// Marshal the strongly typed data to JSON for database storage
+	rawData, err := json.Marshal(nr.Data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal node data: %w", err)
+	}
+
 	return &Node{
 		ID:        nr.ID,
 		Type:      nr.Type,
 		PositionX: nr.Position.X,
 		PositionY: nr.Position.Y,
 		Data:      nr.Data,
-	}
+		RawData:   rawData,
+	}, nil
 }
 
 // Validate checks if the node has a valid type
@@ -119,4 +127,47 @@ func (n *Node) IsStartNode() bool {
 // IsEndNode returns true if this is an end node
 func (n *Node) IsEndNode() bool {
 	return n.Type == NodeTypeEnd
+}
+
+// LoadDataFromRaw parses the RawData into the strongly typed Data field
+func (n *Node) LoadDataFromRaw() error {
+	if n.RawData == nil {
+		return fmt.Errorf("no raw data to parse")
+	}
+
+	parsedData, err := ParseNodeData(n.Type, n.RawData)
+	if err != nil {
+		return fmt.Errorf("failed to parse node data: %w", err)
+	}
+
+	n.Data = parsedData
+	return nil
+}
+
+// UpdateRawDataFromData marshals the strongly typed Data into RawData for database storage
+func (n *Node) UpdateRawDataFromData() error {
+	if n.Data == nil {
+		return fmt.Errorf("no data to marshal")
+	}
+
+	rawData, err := json.Marshal(n.Data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal node data: %w", err)
+	}
+
+	n.RawData = rawData
+	return nil
+}
+
+// ValidateData validates the strongly typed data
+func (n *Node) ValidateData() error {
+	if n.Data == nil {
+		return fmt.Errorf("no data to validate")
+	}
+
+	if n.Data.GetNodeType() != n.Type {
+		return fmt.Errorf("data type mismatch: expected %s, got %s", n.Type, n.Data.GetNodeType())
+	}
+
+	return n.Data.Validate()
 }

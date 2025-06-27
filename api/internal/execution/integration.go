@@ -2,7 +2,6 @@ package execution
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -22,60 +21,8 @@ func NewIntegrationService(apiClient APIClient) *IntegrationService {
 	}
 }
 
-// ExecuteIntegration executes an integration node based on its configuration
-func (s *IntegrationService) ExecuteIntegration(ctx context.Context, nodeData json.RawMessage, inputVariables map[string]interface{}) (map[string]interface{}, error) {
-	// Parse node configuration
-	var integrationData models.IntegrationNodeData
-	if err := json.Unmarshal(nodeData, &integrationData); err != nil {
-		return nil, fmt.Errorf("failed to parse integration node data: %w", err)
-	}
-
-	// Get required input variable (city)
-	cityValue, ok := inputVariables["city"]
-	if !ok {
-		return nil, fmt.Errorf("required input variable 'city' not found")
-	}
-
-	city, ok := cityValue.(string)
-	if !ok {
-		return nil, fmt.Errorf("city must be a string")
-	}
-
-	// Find coordinates for the city
-	coordinates, err := s.findCityCoordinates(city, integrationData.Metadata.Options)
-	if err != nil {
-		return nil, err
-	}
-
-	// Build and call API
-	apiURL := s.buildAPIURL(integrationData.Metadata.APIEndpoint, coordinates.Lat, coordinates.Lon)
-	slog.Debug("Making integration API call",
-		"url", apiURL,
-		"city", city,
-		"lat", coordinates.Lat,
-		"lon", coordinates.Lon)
-
-	apiResponse, err := s.apiClient.CallAPI(ctx, apiURL)
-	if err != nil {
-		return nil, fmt.Errorf("API call failed: %w", err)
-	}
-
-	// Extract temperature from response
-	temperature, err := s.extractTemperature(apiResponse)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract temperature: %w", err)
-	}
-
-	// Return structured response
-	return map[string]interface{}{
-		"temperature": temperature,
-		"location":    coordinates.City,
-		"apiResponse": apiResponse,
-	}, nil
-}
-
 // findCityCoordinates finds the coordinates for a given city from available options
-func (s *IntegrationService) findCityCoordinates(city string, options []models.CityOption) (*models.CityOption, error) {
+func (s *IntegrationService) findCityCoordinates(city string, options []models.LocationOption) (*models.LocationOption, error) {
 	for _, option := range options {
 		if strings.EqualFold(option.City, city) {
 			return &option, nil
@@ -85,7 +32,7 @@ func (s *IntegrationService) findCityCoordinates(city string, options []models.C
 }
 
 // getCityNames extracts city names from options for error messages
-func (s *IntegrationService) getCityNames(options []models.CityOption) []string {
+func (s *IntegrationService) getCityNames(options []models.LocationOption) []string {
 	names := make([]string, len(options))
 	for i, option := range options {
 		names[i] = option.City
@@ -132,4 +79,59 @@ func (s *IntegrationService) extractTemperature(apiResponse map[string]interface
 	default:
 		return 0, fmt.Errorf("temperature is not a numeric value: %T", temperature)
 	}
+}
+
+// ExecuteIntegration executes an integration node using strongly typed input/output
+func (s *IntegrationService) ExecuteIntegration(ctx context.Context, nodeData models.IntegrationNodeData, inputVariables map[string]interface{}) (models.IntegrationExecutionOutput, error) {
+	// Validate the node data
+	if err := nodeData.Validate(); err != nil {
+		return models.IntegrationExecutionOutput{}, fmt.Errorf("invalid integration node data: %w", err)
+	}
+
+	// Get required input variable (city)
+	cityValue, ok := inputVariables["city"]
+	if !ok {
+		return models.IntegrationExecutionOutput{}, fmt.Errorf("required input variable 'city' not found")
+	}
+
+	city, ok := cityValue.(string)
+	if !ok {
+		return models.IntegrationExecutionOutput{}, fmt.Errorf("city must be a string")
+	}
+
+	// Find coordinates for the city
+	coordinates, err := s.findCityCoordinates(city, nodeData.Metadata.Options)
+	if err != nil {
+		return models.IntegrationExecutionOutput{}, err
+	}
+
+	// Build and call API
+	apiURL := s.buildAPIURL(nodeData.Metadata.APIEndpoint, coordinates.Lat, coordinates.Lon)
+	slog.Debug("Making integration API call",
+		"url", apiURL,
+		"city", city,
+		"lat", coordinates.Lat,
+		"lon", coordinates.Lon)
+
+	apiResponse, err := s.apiClient.CallAPI(ctx, apiURL)
+	if err != nil {
+		return models.IntegrationExecutionOutput{}, fmt.Errorf("API call failed: %w", err)
+	}
+
+	// Extract temperature from response
+	temperature, err := s.extractTemperature(apiResponse)
+	if err != nil {
+		return models.IntegrationExecutionOutput{}, fmt.Errorf("failed to extract temperature: %w", err)
+	}
+
+	// Return strongly typed response
+	return models.IntegrationExecutionOutput{
+		APIResponse: apiResponse,
+		ProcessedData: map[string]interface{}{
+			"temperature": temperature,
+			"location":    coordinates.City,
+		},
+		EndpointCalled: apiURL,
+		StatusCode:     200, // Assume success if no error
+	}, nil
 }

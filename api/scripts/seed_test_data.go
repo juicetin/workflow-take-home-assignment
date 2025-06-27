@@ -32,14 +32,14 @@ func SeedTestData() error {
 		Name: "Weather Alert Workflow",
 	}
 
-	// Create test nodes
+	// Create test nodes - using RawData only for database storage
 	nodes := []models.Node{
 		{
 			ID:         "start",
 			Type:       models.NodeTypeStart,
 			PositionX:  -160.0,
 			PositionY:  300.0,
-			Data:       json.RawMessage(`{"label":"Start","description":"Begin weather check workflow","metadata":{"hasHandles":{"source":true,"target":false}}}`),
+			RawData:    json.RawMessage(`{"label":"Start","description":"Begin weather check workflow","metadata":{"hasHandles":{"source":true,"target":false}}}`),
 			WorkflowID: workflowID,
 		},
 		{
@@ -47,7 +47,7 @@ func SeedTestData() error {
 			Type:       models.NodeTypeForm,
 			PositionX:  152.0,
 			PositionY:  304.0,
-			Data:       json.RawMessage(`{"label":"User Input","description":"Process collected data - name, email, location","metadata":{"hasHandles":{"source":true,"target":true},"inputFields":["name","email","city"],"outputVariables":["name","email","city"]}}`),
+			RawData:    json.RawMessage(`{"label":"User Input","description":"Process collected data - name, email, location","metadata":{"hasHandles":{"source":true,"target":true},"inputFields":["name","email","city"],"outputVariables":["name","email","city"]}}`),
 			WorkflowID: workflowID,
 		},
 		{
@@ -55,7 +55,7 @@ func SeedTestData() error {
 			Type:       models.NodeTypeIntegration,
 			PositionX:  460.0,
 			PositionY:  304.0,
-			Data:       json.RawMessage(`{"label":"Weather API","description":"Fetch current temperature for {{city}}","metadata":{"hasHandles":{"source":true,"target":true},"inputVariables":["city"],"apiEndpoint":"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true","options":[{"city":"Sydney","lat":-33.8688,"lon":151.2093},{"city":"Melbourne","lat":-37.8136,"lon":144.9631},{"city":"Brisbane","lat":-27.4698,"lon":153.0251},{"city":"Perth","lat":-31.9505,"lon":115.8605},{"city":"Adelaide","lat":-34.9285,"lon":138.6007}],"outputVariables":["temperature"]}}`),
+			RawData:    json.RawMessage(`{"label":"Weather API","description":"Fetch current temperature for {{city}}","metadata":{"hasHandles":{"source":true,"target":true},"inputVariables":["city"],"apiEndpoint":"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true","options":[{"city":"Sydney","lat":-33.8688,"lon":151.2093},{"city":"Melbourne","lat":-37.8136,"lon":144.9631},{"city":"Brisbane","lat":-27.4698,"lon":153.0251},{"city":"Perth","lat":-31.9505,"lon":115.8605},{"city":"Adelaide","lat":-34.9285,"lon":138.6007}],"outputVariables":["temperature"]}}`),
 			WorkflowID: workflowID,
 		},
 		{
@@ -63,7 +63,7 @@ func SeedTestData() error {
 			Type:       models.NodeTypeCondition,
 			PositionX:  794.0,
 			PositionY:  304.0,
-			Data:       json.RawMessage(`{"label":"Check Condition","description":"Evaluate temperature threshold","metadata":{"hasHandles":{"source":["true","false"],"target":true},"conditionExpression":"temperature {{operator}} {{threshold}}","outputVariables":["conditionMet"]}}`),
+			RawData:    json.RawMessage(`{"label":"Check Condition","description":"Evaluate temperature threshold","metadata":{"hasHandles":{"source":["true","false"],"target":true},"conditionExpression":"temperature {{operator}} {{threshold}}","outputVariables":["conditionMet"]}}`),
 			WorkflowID: workflowID,
 		},
 		{
@@ -71,7 +71,7 @@ func SeedTestData() error {
 			Type:       models.NodeTypeEmail,
 			PositionX:  1096.0,
 			PositionY:  88.0,
-			Data:       json.RawMessage(`{"label":"Send Alert","description":"Email weather alert notification","metadata":{"hasHandles":{"source":true,"target":true},"inputVariables":["name","city","temperature"],"emailTemplate":{"subject":"Weather Alert","body":"Weather alert for {{city}}! Temperature is {{temperature}}°C!"},"outputVariables":["emailSent"]}}`),
+			RawData:    json.RawMessage(`{"label":"Send Alert","description":"Email weather alert notification","metadata":{"hasHandles":{"source":true,"target":true},"inputVariables":["name","city","temperature"],"emailTemplate":{"subject":"Weather Alert","body":"Weather alert for {{city}}! Temperature is {{temperature}}°C!"},"outputVariables":["emailSent"]}}`),
 			WorkflowID: workflowID,
 		},
 		{
@@ -79,7 +79,7 @@ func SeedTestData() error {
 			Type:       models.NodeTypeEnd,
 			PositionX:  1360.0,
 			PositionY:  302.0,
-			Data:       json.RawMessage(`{"label":"Complete","description":"Workflow execution finished","metadata":{"hasHandles":{"source":false,"target":true}}}`),
+			RawData:    json.RawMessage(`{"label":"Complete","description":"Workflow execution finished","metadata":{"hasHandles":{"source":false,"target":true}}}`),
 			WorkflowID: workflowID,
 		},
 	}

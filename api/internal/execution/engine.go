@@ -148,7 +148,8 @@ func (e *Engine) executeNode(ctx context.Context, node *models.NodeResponse, nod
 		step.Status = "completed"
 		if output != nil {
 			outputBytes, _ := json.Marshal(output)
-			step.Output = outputBytes
+			step.RawOutput = outputBytes
+			// TODO: Set strongly typed output when we have type info
 		}
 	}
 
@@ -244,11 +245,24 @@ func (e *Engine) executeFormNode(ctx context.Context, node *models.NodeResponse,
 
 	// Parse node data if available for validation
 	var formData models.FormNodeData
-	if len(node.Data) == 0 {
+	// Since node.Data is now strongly typed, we need to check if it's available and handle it
+	if node.Data == nil {
 		return e.storeAndReturnFormData(execCtx)
 	}
 
-	err := json.Unmarshal(node.Data, &formData)
+	// Type assert the strongly typed data
+	var err error
+	if typedData, ok := node.Data.(models.FormNodeData); ok {
+		formData = typedData
+	} else {
+		// Fallback: try to marshal/unmarshal for compatibility
+		dataBytes, marshalErr := json.Marshal(node.Data)
+		if marshalErr != nil {
+			slog.Warn("Failed to marshal node data", "error", marshalErr)
+			return e.storeAndReturnFormData(execCtx)
+		}
+		err = json.Unmarshal(dataBytes, &formData)
+	}
 	if err != nil {
 		slog.Warn("Failed to parse form node data, proceeding without validation", "error", err)
 		return e.storeAndReturnFormData(execCtx)
@@ -281,21 +295,27 @@ func (e *Engine) executeIntegrationNode(ctx context.Context, node *models.NodeRe
 		inputVariables[key] = value
 	}
 
-	// Execute the integration
-	result, err := e.integrationService.ExecuteIntegration(ctx, node.Data, inputVariables)
+	// Execute the integration using strongly typed data
+	integrationData, ok := node.Data.(models.IntegrationNodeData)
+	if !ok {
+		return nil, fmt.Errorf("node data is not IntegrationNodeData type")
+	}
+
+	result, err := e.integrationService.ExecuteIntegration(ctx, integrationData, inputVariables)
 	if err != nil {
 		return nil, fmt.Errorf("integration execution failed: %w", err)
 	}
 
-	// Store results in execution context for downstream nodes
-	if temperature, ok := result["temperature"]; ok {
+	// Store results in execution context for downstream nodes from strongly typed output
+	if temperature, ok := result.ProcessedData["temperature"]; ok {
 		execCtx.SetVariable("temperature", temperature)
 	}
-	if location, ok := result["location"]; ok {
+	if location, ok := result.ProcessedData["location"]; ok {
 		execCtx.SetVariable("location", location)
 	}
 
-	return result, nil
+	// Return the processed data for compatibility with existing interface
+	return result.ProcessedData, nil
 }
 
 // executeConditionNode executes a condition node with threshold comparison

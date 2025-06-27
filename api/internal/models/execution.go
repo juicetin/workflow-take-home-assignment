@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -26,7 +27,8 @@ type ExecutionStep struct {
 	Label       string          `json:"label"`
 	Description string          `json:"description"`
 	Status      string          `json:"status"`
-	Output      json.RawMessage `json:"output,omitempty"`
+	Output      ExecutionOutput `json:"output,omitempty"` // Strongly typed output
+	RawOutput   json.RawMessage `json:"-"`                // For database storage
 	Error       *string         `json:"error,omitempty"`
 	Duration    *int64          `json:"duration,omitempty"` // milliseconds
 }
@@ -67,12 +69,10 @@ func (ctx *ExecutionContext) GetVariable(key string) (interface{}, bool) {
 	return value, ok
 }
 
-// FormNodeData represents the data structure for form nodes
-type FormNodeData struct {
-	Fields []FormField `json:"fields"`
-}
+// Legacy data structures - these are replaced by the strongly typed versions in node_data.go
+// Keeping for backward compatibility during migration
 
-// FormField represents a single form field configuration
+// FormField represents a single form field configuration (legacy)
 type FormField struct {
 	Name        string   `json:"name"`
 	Type        string   `json:"type"`
@@ -83,41 +83,11 @@ type FormField struct {
 	Placeholder string   `json:"placeholder,omitempty"`
 }
 
-// IntegrationNodeData represents the data structure for integration nodes
-type IntegrationNodeData struct {
-	Metadata IntegrationMetadata `json:"metadata"`
-}
-
-// IntegrationMetadata contains the integration configuration
-type IntegrationMetadata struct {
-	APIEndpoint     string       `json:"apiEndpoint"`
-	InputVariables  []string     `json:"inputVariables"`
-	OutputVariables []string     `json:"outputVariables"`
-	Options         []CityOption `json:"options"`
-}
-
-// CityOption represents a city with its coordinates
+// CityOption represents a city with its coordinates (legacy)
 type CityOption struct {
 	City string  `json:"city"`
 	Lat  float64 `json:"lat"`
 	Lon  float64 `json:"lon"`
-}
-
-// ConditionNodeData represents the data structure for condition nodes
-type ConditionNodeData struct {
-	Field     string      `json:"field"`
-	Operator  string      `json:"operator"`
-	Value     interface{} `json:"value"`
-	TruePath  string      `json:"truePath,omitempty"`
-	FalsePath string      `json:"falsePath,omitempty"`
-}
-
-// EmailNodeData represents the data structure for email nodes
-type EmailNodeData struct {
-	ToField      string `json:"toField"`
-	Subject      string `json:"subject"`
-	BodyTemplate string `json:"bodyTemplate"`
-	FromEmail    string `json:"fromEmail"`
 }
 
 // WeatherAPIResponse represents the response from weather API
@@ -127,4 +97,34 @@ type WeatherAPIResponse struct {
 	Description string  `json:"description,omitempty"`
 	Humidity    int     `json:"humidity,omitempty"`
 	WindSpeed   float64 `json:"windSpeed,omitempty"`
+}
+
+// LoadOutputFromRaw parses the RawOutput into the strongly typed Output field
+func (step *ExecutionStep) LoadOutputFromRaw() error {
+	if step.RawOutput == nil {
+		return fmt.Errorf("no raw output to parse")
+	}
+
+	parsedOutput, err := ParseExecutionOutput(step.Type, step.RawOutput)
+	if err != nil {
+		return fmt.Errorf("failed to parse execution output: %w", err)
+	}
+
+	step.Output = parsedOutput
+	return nil
+}
+
+// UpdateRawOutputFromOutput marshals the strongly typed Output into RawOutput
+func (step *ExecutionStep) UpdateRawOutputFromOutput() error {
+	if step.Output == nil {
+		return nil // No output to marshal
+	}
+
+	rawOutput, err := json.Marshal(step.Output)
+	if err != nil {
+		return fmt.Errorf("failed to marshal execution output: %w", err)
+	}
+
+	step.RawOutput = rawOutput
+	return nil
 }

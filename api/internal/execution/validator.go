@@ -19,31 +19,27 @@ func NewDefaultInputValidator() *DefaultInputValidator {
 
 // ValidateFormData validates form input data against node field definitions
 func (v *DefaultInputValidator) ValidateFormData(formData map[string]interface{}, nodeData *models.FormNodeData) error {
-	if nodeData == nil || len(nodeData.Fields) == 0 {
+	if nodeData == nil || len(nodeData.Metadata.InputFields) == 0 {
 		// No validation rules defined, accept all data
 		return nil
 	}
 
 	var errors []string
 
-	// Validate each field definition
-	for _, field := range nodeData.Fields {
-		value, exists := formData[field.Name]
+	// Validate each input field (simplified validation for strongly typed data)
+	for _, fieldName := range nodeData.Metadata.InputFields {
+		value, exists := formData[fieldName]
 
-		// Check required fields
-		if field.Required && (!exists || isEmptyValue(value)) {
-			errors = append(errors, fmt.Sprintf("field '%s' is required", field.Name))
+		// For now, just check if required fields exist
+		// TODO: Extend FormNodeData to include detailed field validation rules
+		if !exists || isEmptyValue(value) {
+			errors = append(errors, fmt.Sprintf("field '%s' is required", fieldName))
 			continue
 		}
 
-		// Skip validation for non-existent optional fields
-		if !exists {
-			continue
-		}
-
-		// Validate field type and value
-		if err := v.validateFieldValue(field, value); err != nil {
-			errors = append(errors, fmt.Sprintf("field '%s': %s", field.Name, err.Error()))
+		// Basic validation for known field types
+		if err := v.validateBasicFieldValue(fieldName, value); err != nil {
+			errors = append(errors, fmt.Sprintf("field '%s': %s", fieldName, err.Error()))
 		}
 	}
 
@@ -51,6 +47,33 @@ func (v *DefaultInputValidator) ValidateFormData(formData map[string]interface{}
 		return fmt.Errorf("validation errors: %s", strings.Join(errors, "; "))
 	}
 
+	return nil
+}
+
+// validateBasicFieldValue provides basic validation for common field types
+func (v *DefaultInputValidator) validateBasicFieldValue(fieldName string, value interface{}) error {
+	// Basic validation based on field name patterns
+	switch fieldName {
+	case "email":
+		if strValue, ok := value.(string); ok {
+			if _, err := mail.ParseAddress(strValue); err != nil {
+				return fmt.Errorf("must be a valid email address")
+			}
+		} else {
+			return fmt.Errorf("must be a string")
+		}
+	case "name":
+		if strValue, ok := value.(string); ok {
+			if strings.TrimSpace(strValue) == "" {
+				return fmt.Errorf("cannot be empty")
+			}
+		} else {
+			return fmt.Errorf("must be a string")
+		}
+	default:
+		// No specific validation for other fields
+		return nil
+	}
 	return nil
 }
 

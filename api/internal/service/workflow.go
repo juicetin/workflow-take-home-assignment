@@ -89,7 +89,10 @@ func (s *WorkflowService) SaveWorkflowFromRequest(ctx context.Context, req *mode
 	// Convert request nodes to entities
 	nodes := make([]models.Node, len(req.Nodes))
 	for i, nodeReq := range req.Nodes {
-		node := nodeReq.ToNode()
+		node, err := nodeReq.ToNode()
+		if err != nil {
+			return fmt.Errorf("failed to convert node %s: %w", nodeReq.ID, err)
+		}
 		node.WorkflowID = workflowID
 		nodes[i] = *node
 	}
