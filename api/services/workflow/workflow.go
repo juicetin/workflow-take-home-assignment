@@ -14,7 +14,7 @@ import (
 func (s *Service) HandleGetWorkflow(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 	slog.Debug("Getting workflow definition for id", "id", id)
-	
+
 	// Parse workflow ID
 	workflowID, err := uuid.Parse(id)
 	if err != nil {
@@ -22,7 +22,7 @@ func (s *Service) HandleGetWorkflow(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid workflow ID", http.StatusBadRequest)
 		return
 	}
-	
+
 	// Get workflow with nodes and edges
 	workflow, err := s.workflowService.GetWorkflowWithNodesAndEdges(r.Context(), workflowID)
 	if err != nil {
@@ -30,11 +30,11 @@ func (s *Service) HandleGetWorkflow(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Workflow not found", http.StatusNotFound)
 		return
 	}
-	
+
 	// Return JSON response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	
+
 	if err := json.NewEncoder(w).Encode(workflow); err != nil {
 		slog.Error("Failed to encode workflow response", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -81,7 +81,7 @@ func (s *Service) HandleExecuteWorkflow(w http.ResponseWriter, r *http.Request) 
 	// Return execution result
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	
+
 	if err := json.NewEncoder(w).Encode(executionResult); err != nil {
 		slog.Error("Failed to encode execution result", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

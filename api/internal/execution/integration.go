@@ -49,10 +49,10 @@ func (s *IntegrationService) ExecuteIntegration(ctx context.Context, nodeData js
 
 	// Build and call API
 	apiURL := s.buildAPIURL(integrationData.Metadata.APIEndpoint, coordinates.Lat, coordinates.Lon)
-	slog.Debug("Making integration API call", 
-		"url", apiURL, 
-		"city", city, 
-		"lat", coordinates.Lat, 
+	slog.Debug("Making integration API call",
+		"url", apiURL,
+		"city", city,
+		"lat", coordinates.Lat,
 		"lon", coordinates.Lon)
 
 	apiResponse, err := s.apiClient.CallAPI(ctx, apiURL)

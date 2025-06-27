@@ -141,8 +141,8 @@ func TestWorkflowRequest_ValidateWorkflow(t *testing.T) {
 		{
 			name: "all validation errors",
 			workflow: WorkflowRequest{
-				ID:    "test-workflow",
-				Name:  "Invalid Workflow",
+				ID:   "test-workflow",
+				Name: "Invalid Workflow",
 				Nodes: []NodeRequest{
 					{ID: "form-1", Type: NodeTypeForm},
 					// No start or end nodes
@@ -159,16 +159,16 @@ func TestWorkflowRequest_ValidateWorkflow(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			errors := tt.workflow.ValidateWorkflow()
-			
+
 			if len(errors) != tt.expectedErrors {
 				t.Errorf("expected %d errors, got %d: %v", tt.expectedErrors, len(errors), errors)
 			}
-			
+
 			if tt.expectedFields != nil {
 				if len(errors) != len(tt.expectedFields) {
 					t.Errorf("expected %d field errors, got %d", len(tt.expectedFields), len(errors))
 				}
-				
+
 				for i, expectedField := range tt.expectedFields {
 					if i < len(errors) && errors[i].Field != expectedField {
 						t.Errorf("expected error field %s, got %s", expectedField, errors[i].Field)
@@ -396,7 +396,7 @@ func TestValidationError_Error(t *testing.T) {
 		Field:   "nodes",
 		Message: "workflow must have exactly one start node",
 	}
-	
+
 	expected := "workflow must have exactly one start node"
 	if err.Error() != expected {
 		t.Errorf("expected %s, got %s", expected, err.Error())

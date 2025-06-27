@@ -15,7 +15,7 @@ func (ve ValidationError) Error() string {
 // and that there's a valid path from start to end following the edges
 func (wr *WorkflowRequest) ValidateWorkflow() []ValidationError {
 	var errors []ValidationError
-	
+
 	// Check for start and end nodes
 	if !wr.hasStartNode() {
 		errors = append(errors, ValidationError{
@@ -23,14 +23,14 @@ func (wr *WorkflowRequest) ValidateWorkflow() []ValidationError {
 			Message: "workflow must have exactly one start node",
 		})
 	}
-	
+
 	if !wr.hasEndNode() {
 		errors = append(errors, ValidationError{
-			Field:   "nodes", 
+			Field:   "nodes",
 			Message: "workflow must have at least one end node",
 		})
 	}
-	
+
 	// Check path connectivity if we have both start and end nodes
 	if wr.hasStartNode() && wr.hasEndNode() {
 		if !wr.hasValidPath() {
@@ -40,7 +40,7 @@ func (wr *WorkflowRequest) ValidateWorkflow() []ValidationError {
 			})
 		}
 	}
-	
+
 	return errors
 }
 
@@ -72,7 +72,7 @@ func (wr *WorkflowRequest) hasValidPath() bool {
 	for _, edge := range wr.Edges {
 		graph[edge.Source] = append(graph[edge.Source], edge.Target)
 	}
-	
+
 	// Find start node ID
 	var startNodeID string
 	for _, node := range wr.Nodes {
@@ -81,11 +81,11 @@ func (wr *WorkflowRequest) hasValidPath() bool {
 			break
 		}
 	}
-	
+
 	if startNodeID == "" {
 		return false
 	}
-	
+
 	// Get all end node IDs
 	endNodeIDs := make(map[string]bool)
 	for _, node := range wr.Nodes {
@@ -93,20 +93,20 @@ func (wr *WorkflowRequest) hasValidPath() bool {
 			endNodeIDs[node.ID] = true
 		}
 	}
-	
+
 	if len(endNodeIDs) == 0 {
 		return false
 	}
-	
+
 	// BFS to find all reachable nodes from start
 	visited := make(map[string]bool)
 	queue := []string{startNodeID}
 	visited[startNodeID] = true
-	
+
 	for len(queue) > 0 {
 		current := queue[0]
 		queue = queue[1:]
-		
+
 		// Add unvisited neighbors to queue
 		for _, neighbor := range graph[current] {
 			if !visited[neighbor] {
@@ -115,13 +115,13 @@ func (wr *WorkflowRequest) hasValidPath() bool {
 			}
 		}
 	}
-	
+
 	// Check if all end nodes are reachable
 	for endNodeID := range endNodeIDs {
 		if !visited[endNodeID] {
 			return false
 		}
 	}
-	
+
 	return true
 }

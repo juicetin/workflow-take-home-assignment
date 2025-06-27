@@ -12,14 +12,14 @@ func TestEngine_ExecuteWorkflow(t *testing.T) {
 	// Create services
 	emailService := NewInMemoryEmailService()
 	validator := NewDefaultInputValidator()
-	
+
 	// Create mock API client with default weather responses
 	mockAPIClient := NewMockAPIClient()
 	mockAPIClient.SetDefaultWeatherResponse()
-	
+
 	// Create engine with mock API client
 	engine := NewEngineWithAPIClient(emailService, validator, mockAPIClient)
-	
+
 	// Create test workflow
 	workflow := &models.WorkflowResponse{
 		ID: "test-workflow",
@@ -71,7 +71,7 @@ func TestEngine_ExecuteWorkflow(t *testing.T) {
 			{ID: "e5", Source: "email", Target: "end"},
 		},
 	}
-	
+
 	// Create execution request
 	req := &models.ExecutionRequest{
 		FormData: map[string]interface{}{
@@ -84,28 +84,28 @@ func TestEngine_ExecuteWorkflow(t *testing.T) {
 			"threshold": 25.0,
 		},
 	}
-	
+
 	// Execute workflow
 	result, err := engine.ExecuteWorkflow(context.Background(), workflow, req)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
-	
+
 	// Verify result
 	if result.Status != "completed" {
 		t.Errorf("Expected status 'completed', got '%s'", result.Status)
 	}
-	
+
 	if len(result.Steps) == 0 {
 		t.Error("Expected execution steps, got none")
 	}
-	
+
 	// Verify email was tracked
 	sentEmails := emailService.GetSentEmails()
 	if len(sentEmails) != 1 {
 		t.Errorf("Expected 1 email to be tracked, got %d", len(sentEmails))
 	}
-	
+
 	if len(sentEmails) > 0 {
 		email := sentEmails[0]
 		if email.To != "alice@example.com" {
@@ -116,11 +116,11 @@ func TestEngine_ExecuteWorkflow(t *testing.T) {
 
 func TestDefaultInputValidator_ValidateFormData(t *testing.T) {
 	validator := NewDefaultInputValidator()
-	
+
 	// Test with no validation rules (should pass)
 	err := validator.ValidateFormData(
 		map[string]interface{}{
-			"name": "Alice",
+			"name":  "Alice",
 			"email": "alice@example.com",
 		},
 		nil,
@@ -128,7 +128,7 @@ func TestDefaultInputValidator_ValidateFormData(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected no error with nil nodeData, got %v", err)
 	}
-	
+
 	// Test with field definitions
 	formData := &models.FormNodeData{
 		Fields: []models.FormField{
@@ -144,7 +144,7 @@ func TestDefaultInputValidator_ValidateFormData(t *testing.T) {
 			},
 		},
 	}
-	
+
 	// Valid data should pass
 	err = validator.ValidateFormData(
 		map[string]interface{}{
@@ -156,7 +156,7 @@ func TestDefaultInputValidator_ValidateFormData(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected no error with valid data, got %v", err)
 	}
-	
+
 	// Missing required field should fail
 	err = validator.ValidateFormData(
 		map[string]interface{}{
@@ -174,14 +174,14 @@ func TestEngine_ExecuteWorkflow_APIFailure(t *testing.T) {
 	// Create services
 	emailService := NewInMemoryEmailService()
 	validator := NewDefaultInputValidator()
-	
+
 	// Create mock API client that returns an error
 	mockAPIClient := NewMockAPIClient()
 	mockAPIClient.SetAPIError("service unavailable")
-	
+
 	// Create engine with mock API client
 	engine := NewEngineWithAPIClient(emailService, validator, mockAPIClient)
-	
+
 	// Create test workflow (same as successful test)
 	workflow := &models.WorkflowResponse{
 		ID: "test-workflow",
@@ -214,32 +214,31 @@ func TestEngine_ExecuteWorkflow_APIFailure(t *testing.T) {
 			{ID: "e2", Source: "form", Target: "weather"},
 		},
 	}
-	
+
 	// Create execution request
 	req := &models.ExecutionRequest{
 		FormData: map[string]interface{}{
 			"city": "Sydney",
 		},
 	}
-	
+
 	// Execute workflow - should fail at integration step
 	result, err := engine.ExecuteWorkflow(context.Background(), workflow, req)
 	if err != nil {
 		t.Fatalf("Expected no error from ExecuteWorkflow, got %v", err)
 	}
-	
+
 	// Verify result shows failure
 	if result.Status != "failed" {
 		t.Errorf("Expected status 'failed', got '%s'", result.Status)
 	}
-	
+
 	if result.Error == nil {
 		t.Error("Expected error message in result")
 	}
-	
+
 	// Should have executed start and form, but failed on integration
 	if len(result.Steps) < 2 {
 		t.Errorf("Expected at least 2 steps, got %d", len(result.Steps))
 	}
 }
-

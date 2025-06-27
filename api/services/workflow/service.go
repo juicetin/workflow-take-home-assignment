@@ -18,10 +18,10 @@ type Service struct {
 func NewService(db *pgx.Conn) (*Service, error) {
 	// Create repository
 	workflowRepo := repository.NewWorkflowRepository(db)
-	
+
 	// Create service
 	workflowService := service.NewWorkflowService(workflowRepo)
-	
+
 	return &Service{
 		db:              db,
 		workflowService: workflowService,

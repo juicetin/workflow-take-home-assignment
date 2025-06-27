@@ -23,34 +23,34 @@ func (v *DefaultInputValidator) ValidateFormData(formData map[string]interface{}
 		// No validation rules defined, accept all data
 		return nil
 	}
-	
+
 	var errors []string
-	
+
 	// Validate each field definition
 	for _, field := range nodeData.Fields {
 		value, exists := formData[field.Name]
-		
+
 		// Check required fields
 		if field.Required && (!exists || isEmptyValue(value)) {
 			errors = append(errors, fmt.Sprintf("field '%s' is required", field.Name))
 			continue
 		}
-		
+
 		// Skip validation for non-existent optional fields
 		if !exists {
 			continue
 		}
-		
+
 		// Validate field type and value
 		if err := v.validateFieldValue(field, value); err != nil {
 			errors = append(errors, fmt.Sprintf("field '%s': %s", field.Name, err.Error()))
 		}
 	}
-	
+
 	if len(errors) > 0 {
 		return fmt.Errorf("validation errors: %s", strings.Join(errors, "; "))
 	}
-	
+
 	return nil
 }
 
@@ -64,7 +64,7 @@ func (v *DefaultInputValidator) validateFieldValue(field models.FormField, value
 			return fmt.Errorf("must be a string")
 		}
 		return v.validateStringField(field, strValue)
-		
+
 	case "number":
 		switch numValue := value.(type) {
 		case float64, int, int64:
@@ -72,14 +72,14 @@ func (v *DefaultInputValidator) validateFieldValue(field models.FormField, value
 		default:
 			return fmt.Errorf("must be a number")
 		}
-		
+
 	case "select":
 		strValue, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("must be a string")
 		}
 		return v.validateSelectField(field, strValue)
-		
+
 	default:
 		// Unknown field type, no specific validation
 		return nil
@@ -92,28 +92,28 @@ func (v *DefaultInputValidator) validateStringField(field models.FormField, valu
 	if strings.TrimSpace(value) == "" && field.Required {
 		return fmt.Errorf("cannot be empty")
 	}
-	
+
 	// Email validation
 	if field.Type == "email" {
 		if _, err := mail.ParseAddress(value); err != nil {
 			return fmt.Errorf("must be a valid email address")
 		}
 	}
-	
+
 	// Custom validation rules
 	if field.Validation != "" {
 		if err := v.validateCustomRule(field.Validation, value); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
 // validateNumberField validates number fields
 func (v *DefaultInputValidator) validateNumberField(field models.FormField, value interface{}) error {
 	var numValue float64
-	
+
 	switch v := value.(type) {
 	case float64:
 		numValue = v
@@ -124,14 +124,14 @@ func (v *DefaultInputValidator) validateNumberField(field models.FormField, valu
 	default:
 		return fmt.Errorf("invalid number type")
 	}
-	
+
 	// Custom validation rules for numbers
 	if field.Validation != "" {
 		if err := v.validateNumberRule(field.Validation, numValue); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -141,14 +141,14 @@ func (v *DefaultInputValidator) validateSelectField(field models.FormField, valu
 		// No options defined, accept any value
 		return nil
 	}
-	
+
 	// Check if value is in allowed options
 	for _, option := range field.Options {
 		if option == value {
 			return nil
 		}
 	}
-	
+
 	return fmt.Errorf("must be one of: %s", strings.Join(field.Options, ", "))
 }
 
@@ -177,7 +177,7 @@ func (v *DefaultInputValidator) validateCustomRule(rule, value string) error {
 		// Unknown rule, skip validation
 		return nil
 	}
-	
+
 	return nil
 }
 
@@ -209,7 +209,7 @@ func (v *DefaultInputValidator) validateNumberRule(rule string, value float64) e
 			return fmt.Errorf("must be between %.1f and %.1f", min, max)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -219,11 +219,11 @@ func (v *DefaultInputValidator) validateMinLength(rule, value string) error {
 	if _, err := fmt.Sscanf(rule, "min_length:%d", &minLen); err != nil {
 		return nil // Invalid rule format, skip
 	}
-	
+
 	if len(value) < minLen {
 		return fmt.Errorf("must be at least %d characters", minLen)
 	}
-	
+
 	return nil
 }
 
@@ -233,11 +233,11 @@ func (v *DefaultInputValidator) validateMaxLength(rule, value string) error {
 	if _, err := fmt.Sscanf(rule, "max_length:%d", &maxLen); err != nil {
 		return nil // Invalid rule format, skip
 	}
-	
+
 	if len(value) > maxLen {
 		return fmt.Errorf("must be at most %d characters", maxLen)
 	}
-	
+
 	return nil
 }
 
@@ -247,16 +247,16 @@ func (v *DefaultInputValidator) validateRegex(rule, value string) error {
 	if pattern == "" {
 		return nil // Empty pattern, skip
 	}
-	
+
 	regex, err := regexp.Compile(pattern)
 	if err != nil {
 		return nil // Invalid regex, skip validation
 	}
-	
+
 	if !regex.MatchString(value) {
 		return fmt.Errorf("does not match required pattern")
 	}
-	
+
 	return nil
 }
 
@@ -265,7 +265,7 @@ func isEmptyValue(value interface{}) bool {
 	if value == nil {
 		return true
 	}
-	
+
 	switch v := value.(type) {
 	case string:
 		return strings.TrimSpace(v) == ""

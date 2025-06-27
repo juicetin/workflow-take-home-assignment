@@ -39,20 +39,20 @@ func (m *MockAPIClient) CallAPI(ctx context.Context, url string) (map[string]int
 	if err, ok := m.errors[url]; ok {
 		return nil, err
 	}
-	
+
 	// Check for pattern matches
 	for pattern, response := range m.responses {
 		if strings.Contains(url, pattern) {
 			return response, nil
 		}
 	}
-	
+
 	for pattern, err := range m.errors {
 		if strings.Contains(url, pattern) {
 			return nil, err
 		}
 	}
-	
+
 	// Default response for unknown URLs
 	return map[string]interface{}{
 		"current_weather": map[string]interface{}{
@@ -70,18 +70,18 @@ func (m *MockAPIClient) SetDefaultWeatherResponse() {
 			"time":        "2024-01-01T12:00",
 		},
 	}
-	
+
 	melbourneResponse := map[string]interface{}{
 		"current_weather": map[string]interface{}{
 			"temperature": 22.1,
 			"time":        "2024-01-01T12:00",
 		},
 	}
-	
+
 	// Set responses for Sydney coordinates
 	m.SetResponse("latitude=-33.868800", sydneyResponse)
-	
-	// Set responses for Melbourne coordinates  
+
+	// Set responses for Melbourne coordinates
 	m.SetResponse("latitude=-37.813600", melbourneResponse)
 }
 

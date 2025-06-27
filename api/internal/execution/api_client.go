@@ -61,4 +61,3 @@ func (c *HTTPAPIClient) CallAPI(ctx context.Context, url string) (map[string]int
 
 	return result, nil
 }
-

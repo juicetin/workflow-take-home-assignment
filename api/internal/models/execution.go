@@ -13,10 +13,10 @@ type ExecutionRequest struct {
 
 // ExecutionResponse represents the complete execution result
 type ExecutionResponse struct {
-	ExecutedAt time.Time      `json:"executedAt"`
-	Status     string         `json:"status"`
+	ExecutedAt time.Time       `json:"executedAt"`
+	Status     string          `json:"status"`
 	Steps      []ExecutionStep `json:"steps"`
-	Error      *string        `json:"error,omitempty"`
+	Error      *string         `json:"error,omitempty"`
 }
 
 // ExecutionStep represents a single step in the workflow execution
@@ -78,8 +78,8 @@ type FormField struct {
 	Type        string   `json:"type"`
 	Label       string   `json:"label"`
 	Required    bool     `json:"required"`
-	Options     []string `json:"options,omitempty"`     // for select fields
-	Validation  string   `json:"validation,omitempty"`  // validation rules
+	Options     []string `json:"options,omitempty"`    // for select fields
+	Validation  string   `json:"validation,omitempty"` // validation rules
 	Placeholder string   `json:"placeholder,omitempty"`
 }
 
@@ -90,10 +90,10 @@ type IntegrationNodeData struct {
 
 // IntegrationMetadata contains the integration configuration
 type IntegrationMetadata struct {
-	APIEndpoint      string           `json:"apiEndpoint"`
-	InputVariables   []string         `json:"inputVariables"`
-	OutputVariables  []string         `json:"outputVariables"`
-	Options          []CityOption     `json:"options"`
+	APIEndpoint     string       `json:"apiEndpoint"`
+	InputVariables  []string     `json:"inputVariables"`
+	OutputVariables []string     `json:"outputVariables"`
+	Options         []CityOption `json:"options"`
 }
 
 // CityOption represents a city with its coordinates

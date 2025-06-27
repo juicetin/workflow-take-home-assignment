@@ -33,11 +33,11 @@ func (s *InMemoryEmailService) SendEmail(ctx context.Context, to, subject, body 
 	if to == "" {
 		return fmt.Errorf("recipient email is required")
 	}
-	
+
 	if subject == "" {
 		return fmt.Errorf("email subject is required")
 	}
-	
+
 	// Create email payload
 	payload := EmailPayload{
 		To:        to,
@@ -45,19 +45,19 @@ func (s *InMemoryEmailService) SendEmail(ctx context.Context, to, subject, body 
 		Body:      body,
 		Timestamp: time.Now(),
 	}
-	
+
 	// Store in memory
 	s.sentEmails = append(s.sentEmails, payload)
-	
+
 	// Log to avoid unused variable warnings and for visibility
-	slog.Info("Email payload tracked in memory", 
+	slog.Info("Email payload tracked in memory",
 		"to", payload.To,
 		"subject", payload.Subject,
 		"body", payload.Body,
 		"timestamp", payload.Timestamp,
 		"totalEmails", len(s.sentEmails),
 	)
-	
+
 	return nil
 }
 
